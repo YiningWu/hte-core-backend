@@ -1,0 +1,32 @@
+{
+  "name": "eduhub-microservices",
+  "version": "1.0.0",
+  "description": "EduHub Microservices - User & Campus Domain with Payroll",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "DB_HOST=127.0.0.1 DB_PORT=3307 DB_USERNAME=root DB_PASSWORD=rootpassword ENCRYPTION_KEY=7b9912f04477299298ca7af2d6518026 JWT_SECRET=your-jwt-secret-change-this-in-production-very-long-key-123456789 turbo run dev",
+    "dev:env": "turbo run dev",
+    "start": "turbo run start",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck"
+  },
+  "workspaces": [
+    "services/*",
+    "libs/*"
+  ],
+  "devDependencies": {
+    "@types/node": "^20.14.9",
+    "@typescript-eslint/eslint-plugin": "^7.15.0",
+    "@typescript-eslint/parser": "^7.15.0",
+    "eslint": "^8.57.0",
+    "turbo": "^1.13.3",
+    "typescript": "^5.5.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@fastify/static": "^7.0.4"
+  }
+}

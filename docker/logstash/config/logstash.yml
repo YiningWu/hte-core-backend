@@ -1,0 +1,26 @@
+http.host: "0.0.0.0"
+xpack.monitoring.elasticsearch.hosts: [ "http://elasticsearch:9200" ]
+
+# Pipeline configuration
+path.config: /usr/share/logstash/pipeline
+config.reload.automatic: true
+config.reload.interval: 3s
+
+# Logging
+log.level: info
+path.logs: /var/log/logstash
+
+# Pipeline settings
+pipeline.workers: 2
+pipeline.batch.size: 125
+pipeline.batch.delay: 50
+
+# Memory settings
+pipeline.ecs_compatibility: disabled
+
+# Monitoring
+monitoring.enabled: false
+
+# Dead letter queue
+dead_letter_queue.enable: true
+path.dead_letter_queue: /var/lib/logstash/dead_letter_queue

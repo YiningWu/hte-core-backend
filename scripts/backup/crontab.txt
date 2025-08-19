@@ -1,0 +1,31 @@
+# EduHub Automated Backup Crontab Configuration
+# Install with: crontab -u root /path/to/crontab.txt
+
+# Environment variables for backup scripts
+BACKUP_ROOT=/var/backups
+RETENTION_DAYS=7
+PARALLEL_BACKUPS=true
+ENABLE_S3_BACKUP=true
+ENABLE_MINIO_BACKUP=true
+BACKUP_NOTIFICATION_WEBHOOK=
+
+# MySQL and Redis backup paths
+SCRIPT_DIR=/opt/eduhub/scripts/backup
+
+# Run full backup daily at 2:30 AM
+30 2 * * * cd $SCRIPT_DIR && ./backup-orchestrator.sh >> /var/log/cron-backup.log 2>&1
+
+# Run incremental MySQL backup every 4 hours (optional)
+# 0 */4 * * * cd $SCRIPT_DIR && ./mysql-backup.sh >> /var/log/cron-mysql-backup.log 2>&1
+
+# Weekly full system backup on Sundays at 1:00 AM
+0 1 * * 0 cd $SCRIPT_DIR && BACKUP_TYPE=weekly ./backup-orchestrator.sh >> /var/log/cron-weekly-backup.log 2>&1
+
+# Monthly archive on the 1st at midnight (with longer retention)
+0 0 1 * * cd $SCRIPT_DIR && RETENTION_DAYS=90 BACKUP_TYPE=monthly ./backup-orchestrator.sh >> /var/log/cron-monthly-backup.log 2>&1
+
+# Clean up old log files weekly
+0 3 * * 1 find /var/log -name "*backup*.log" -type f -mtime +30 -delete
+
+# Health check - test backup restoration monthly
+0 4 1 * * cd $SCRIPT_DIR && ./restore-mysql.sh --test --database user_service --date $(ls /var/backups/mysql/user_service_*.sql.gz | tail -1 | grep -o '[0-9]\{8\}_[0-9]\{6\}') >> /var/log/backup-health-check.log 2>&1

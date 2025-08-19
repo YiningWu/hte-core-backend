@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "declaration": true,
+    "outDir": "./dist",
+    "skipLibCheck": true,
+    "noImplicitAny": false
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "src/tracing", "src/storage/storage.controller.ts", "src/decorators/trace.decorator.ts", "src/interceptors/tracing.interceptor.ts", "src/messaging/message-broker.service.ts", "src/messaging/event-handlers.ts", "src/messaging/domain-events.ts"]
+}

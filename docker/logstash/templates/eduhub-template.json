@@ -1,0 +1,201 @@
+{
+  "index_patterns": ["eduhub-*"],
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0,
+      "index.refresh_interval": "5s",
+      "index.codec": "best_compression",
+      "analysis": {
+        "analyzer": {
+          "eduhub_analyzer": {
+            "type": "custom",
+            "tokenizer": "standard",
+            "filter": ["lowercase", "stop", "snowball"]
+          }
+        }
+      }
+    },
+    "mappings": {
+      "properties": {
+        "@timestamp": {
+          "type": "date",
+          "format": "strict_date_optional_time||epoch_millis"
+        },
+        "message": {
+          "type": "text",
+          "analyzer": "eduhub_analyzer",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "level": {
+          "type": "keyword"
+        },
+        "service_name": {
+          "type": "keyword"
+        },
+        "log_type": {
+          "type": "keyword"
+        },
+        "environment": {
+          "type": "keyword"
+        },
+        "cluster": {
+          "type": "keyword"
+        },
+        "container_name": {
+          "type": "keyword"
+        },
+        "host": {
+          "properties": {
+            "name": {
+              "type": "keyword"
+            },
+            "ip": {
+              "type": "ip"
+            }
+          }
+        },
+        "process_id": {
+          "type": "integer"
+        },
+        "thread_id": {
+          "type": "integer"
+        },
+        "logger": {
+          "type": "keyword"
+        },
+        "context": {
+          "type": "keyword"
+        },
+        "user_id": {
+          "type": "keyword"
+        },
+        "org_id": {
+          "type": "keyword"
+        },
+        "request_id": {
+          "type": "keyword"
+        },
+        "correlation_id": {
+          "type": "keyword"
+        },
+        "session_id": {
+          "type": "keyword"
+        },
+        "remote_addr": {
+          "type": "ip"
+        },
+        "method": {
+          "type": "keyword"
+        },
+        "request": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "status": {
+          "type": "integer"
+        },
+        "request_time": {
+          "type": "float"
+        },
+        "response_time": {
+          "type": "float"
+        },
+        "response_time_category": {
+          "type": "keyword"
+        },
+        "body_bytes_sent": {
+          "type": "long"
+        },
+        "http_user_agent": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "http_referer": {
+          "type": "keyword",
+          "ignore_above": 256
+        },
+        "query_time": {
+          "type": "float"
+        },
+        "lock_time": {
+          "type": "float"
+        },
+        "rows_sent": {
+          "type": "integer"
+        },
+        "rows_examined": {
+          "type": "integer"
+        },
+        "query": {
+          "type": "text",
+          "analyzer": "eduhub_analyzer"
+        },
+        "error": {
+          "properties": {
+            "type": {
+              "type": "keyword"
+            },
+            "message": {
+              "type": "text"
+            },
+            "stack": {
+              "type": "text"
+            }
+          }
+        },
+        "alert_level": {
+          "type": "keyword"
+        },
+        "needs_attention": {
+          "type": "boolean"
+        },
+        "geoip": {
+          "properties": {
+            "country_name": {
+              "type": "keyword"
+            },
+            "city_name": {
+              "type": "keyword"
+            },
+            "location": {
+              "type": "geo_point"
+            },
+            "region_name": {
+              "type": "keyword"
+            }
+          }
+        },
+        "json_data": {
+          "type": "object",
+          "enabled": true
+        },
+        "fields": {
+          "type": "object",
+          "enabled": true
+        },
+        "tags": {
+          "type": "keyword"
+        }
+      }
+    },
+    "aliases": {
+      "eduhub-logs": {}
+    }
+  }
+}

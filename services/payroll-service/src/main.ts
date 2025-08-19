@@ -1,0 +1,66 @@
+import { NestFactory } from '@nestjs/core';
+import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
+import { ValidationPipe } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { AppModule } from './app.module';
+import helmet from 'helmet';
+import compression from 'compression';
+
+async function bootstrap() {
+  const app = await NestFactory.create<NestFastifyApplication>(
+    AppModule,
+    new FastifyAdapter({ 
+      logger: process.env.NODE_ENV === 'development',
+      keepAliveTimeout: 5000
+    })
+  );
+
+  app.setGlobalPrefix('core');
+  
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+    transformOptions: {
+      enableImplicitConversion: true,
+    },
+  }));
+
+  app.use(helmet());
+  app.use(compression());
+
+  app.enableCors({
+    origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
+    credentials: true,
+  });
+
+  const config = new DocumentBuilder()
+    .setTitle('Payroll Service API')
+    .setDescription('EduHub Payroll Domain Microservice with Compensation Intervals')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .addApiKey({ type: 'apiKey', name: 'X-Request-Id', in: 'header' })
+    .addApiKey({ type: 'apiKey', name: 'X-Org-Id', in: 'header' })
+    .build();
+    
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
+
+  app.register(async function (fastify: any) {
+    fastify.get('/healthz', async () => {
+      return { status: 'ok', service: 'payroll-service', timestamp: new Date().toISOString() };
+    });
+    
+    fastify.get('/readyz', async () => {
+      return { status: 'ready', service: 'payroll-service', timestamp: new Date().toISOString() };
+    });
+  });
+
+  const port = process.env.PORT || 3003;
+  await app.listen(port, '0.0.0.0');
+  
+  console.log(`🚀 Payroll Service is running on: http://localhost:${port}`);
+  console.log(`📚 API Documentation: http://localhost:${port}/api/docs`);
+}
+
+bootstrap();

@@ -1,0 +1,72 @@
+[mysqld]
+# Server ID - must be unique for each MySQL server
+server-id = 1
+
+# Enable binary logging for replication
+log-bin = mysql-bin
+log-bin-index = mysql-bin.index
+
+# Binary log format - ROW is recommended for consistency
+binlog-format = ROW
+
+# GTID-based replication for easier management
+gtid-mode = ON
+enforce-gtid-consistency = ON
+
+# Database and table to replicate (optional - default is all)
+# binlog-do-db = eduhub
+# binlog-ignore-db = mysql,information_schema,performance_schema,sys
+
+# Expiry settings for binary logs (7 days)
+expire_logs_days = 7
+
+# Maximum binary log file size
+max_binlog_size = 1G
+
+# Sync settings for durability
+sync_binlog = 1
+innodb_flush_log_at_trx_commit = 1
+
+# Character set and collation
+character-set-server = utf8mb4
+collation-server = utf8mb4_unicode_ci
+
+# Connection settings
+max_connections = 200
+max_connect_errors = 1000
+
+# Buffer pool settings
+innodb_buffer_pool_size = 512M
+innodb_log_file_size = 128M
+
+# Query cache (disabled in MySQL 8.0 but keeping for compatibility)
+query_cache_type = 0
+query_cache_size = 0
+
+# Slow query log
+slow_query_log = 1
+slow_query_log_file = /var/log/mysql/slow.log
+long_query_time = 2
+
+# Error log
+log-error = /var/log/mysql/error.log
+
+# General query log (disable in production)
+# general_log = 1
+# general_log_file = /var/log/mysql/general.log
+
+# Table cache settings
+table_open_cache = 2000
+table_definition_cache = 1400
+
+# Thread settings
+thread_cache_size = 10
+
+# MyISAM settings (legacy)
+key_buffer_size = 32M
+
+# InnoDB settings
+innodb_file_per_table = 1
+innodb_open_files = 400
+innodb_io_capacity = 400
+innodb_flush_method = O_DIRECT

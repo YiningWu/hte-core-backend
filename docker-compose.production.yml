@@ -1,0 +1,330 @@
+version: '3.8'
+
+services:
+  # MySQL Master Database
+  mysql-master:
+    image: mysql:8.0
+    container_name: eduhub-mysql-master
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_MASTER_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${DB_DATABASE:-eduhub}
+      MYSQL_REPLICATION_USER: ${DB_REPLICATION_USER:-repl_user}
+      MYSQL_REPLICATION_PASSWORD: ${DB_REPLICATION_PASSWORD:-repl_password}
+    ports:
+      - "${DB_MASTER_PORT:-3306}:3306"
+    volumes:
+      - mysql_master_data:/var/lib/mysql
+      - ./docker/mysql/master.cnf:/etc/mysql/conf.d/master.cnf
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    networks:
+      - eduhub-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # MySQL Slave Database  
+  mysql-slave:
+    image: mysql:8.0
+    container_name: eduhub-mysql-slave
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_SLAVE_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${DB_DATABASE:-eduhub}
+      MYSQL_MASTER_HOST: mysql-master
+      MYSQL_REPLICATION_USER: ${DB_REPLICATION_USER:-repl_user}
+      MYSQL_REPLICATION_PASSWORD: ${DB_REPLICATION_PASSWORD:-repl_password}
+    ports:
+      - "${DB_SLAVE_PORT:-3307}:3306"
+    volumes:
+      - mysql_slave_data:/var/lib/mysql
+      - ./docker/mysql/slave.cnf:/etc/mysql/conf.d/slave.cnf
+      - ./docker/mysql/setup-slave.sh:/docker-entrypoint-initdb.d/setup-slave.sh
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    depends_on:
+      mysql-master:
+        condition: service_healthy
+    networks:
+      - eduhub-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: eduhub-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - eduhub-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO Object Storage
+  minio:
+    image: minio/minio:latest
+    container_name: eduhub-minio
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-password123}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - eduhub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: eduhub-prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - eduhub-network
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: eduhub-grafana
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin123}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning
+    networks:
+      - eduhub-network
+
+  # Elasticsearch
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: eduhub-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.security.enabled=false
+    ports:
+      - "${ELASTICSEARCH_PORT:-9200}:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - eduhub-network
+
+  # Kibana
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: eduhub-kibana
+    ports:
+      - "${KIBANA_PORT:-5601}:5601"
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    networks:
+      - eduhub-network
+
+  # Logstash
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.0
+    container_name: eduhub-logstash
+    ports:
+      - "5044:5044"  # Beats input
+      - "8080:8080"  # HTTP input
+    environment:
+      LS_JAVA_OPTS: "-Xms512m -Xmx512m"
+      ENVIRONMENT: "${NODE_ENV:-production}"
+      CLUSTER_NAME: "eduhub"
+      ALERT_WEBHOOK_URL: "${ALERT_WEBHOOK_URL:-}"
+    volumes:
+      - ./docker/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml
+      - ./docker/logstash/pipeline:/usr/share/logstash/pipeline
+      - ./docker/logstash/templates:/usr/share/logstash/templates
+    depends_on:
+      - elasticsearch
+      - redis
+    networks:
+      - eduhub-network
+
+  # Filebeat
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.11.0
+    container_name: eduhub-filebeat
+    user: root
+    ports:
+      - "5066:5066"  # Health check endpoint
+    environment:
+      - output.logstash.hosts=["logstash:5044"]
+    volumes:
+      - ./docker/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/log:/var/log:ro
+      - filebeat_data:/usr/share/filebeat/data
+    depends_on:
+      - logstash
+    networks:
+      - eduhub-network
+
+  # User Service
+  user-service:
+    build:
+      context: .
+      dockerfile: ./services/user-service/Dockerfile
+    container_name: user-service
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DB_MASTER_HOST=mysql-master
+      - DB_SLAVE_HOST=mysql-slave
+      - DB_MASTER_PORT=3306
+      - DB_SLAVE_PORT=3306
+      - DB_USERNAME=root
+      - DB_MASTER_PASSWORD=${DB_MASTER_PASSWORD:-rootpassword}
+      - DB_SLAVE_PASSWORD=${DB_SLAVE_PASSWORD:-rootpassword}
+      - DB_DATABASE=user_service
+      - ENABLE_SLAVE_READS=true
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=${JWT_SECRET}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-admin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-password123}
+    depends_on:
+      mysql-master:
+        condition: service_healthy
+      mysql-slave:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - eduhub-network
+
+  # Campus Service
+  campus-service:
+    build:
+      context: .
+      dockerfile: ./services/campus-service/Dockerfile
+    container_name: campus-service
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+      - DB_MASTER_HOST=mysql-master
+      - DB_SLAVE_HOST=mysql-slave
+      - DB_MASTER_PORT=3306
+      - DB_SLAVE_PORT=3306
+      - DB_USERNAME=root
+      - DB_MASTER_PASSWORD=${DB_MASTER_PASSWORD:-rootpassword}
+      - DB_SLAVE_PASSWORD=${DB_SLAVE_PASSWORD:-rootpassword}
+      - DB_DATABASE=campus_service
+      - ENABLE_SLAVE_READS=true
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      mysql-master:
+        condition: service_healthy
+      mysql-slave:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - eduhub-network
+
+  # Payroll Service
+  payroll-service:
+    build:
+      context: .
+      dockerfile: ./services/payroll-service/Dockerfile
+    container_name: payroll-service
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=production
+      - PORT=3003
+      - DB_MASTER_HOST=mysql-master
+      - DB_SLAVE_HOST=mysql-slave
+      - DB_MASTER_PORT=3306
+      - DB_SLAVE_PORT=3306
+      - DB_USERNAME=root
+      - DB_MASTER_PASSWORD=${DB_MASTER_PASSWORD:-rootpassword}
+      - DB_SLAVE_PASSWORD=${DB_SLAVE_PASSWORD:-rootpassword}
+      - DB_DATABASE=payroll_service
+      - ENABLE_SLAVE_READS=true
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      mysql-master:
+        condition: service_healthy
+      mysql-slave:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - eduhub-network
+
+  # API Gateway (Nginx)
+  api-gateway:
+    image: nginx:alpine
+    container_name: api-gateway
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.prod.conf:/etc/nginx/nginx.conf
+      - ./docker/nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - user-service
+      - campus-service
+      - payroll-service
+    networks:
+      - eduhub-network
+
+volumes:
+  mysql_master_data:
+  mysql_slave_data:
+  redis_data:
+  minio_data:
+  prometheus_data:
+  grafana_data:
+  elasticsearch_data:
+  filebeat_data:
+
+networks:
+  eduhub-network:
+    driver: bridge

@@ -1,0 +1,155 @@
+filebeat.inputs:
+  # Application logs from containers
+  - type: container
+    paths:
+      - '/var/lib/docker/containers/*/*.log'
+    processors:
+      - add_docker_metadata:
+          host: "unix:///var/run/docker.sock"
+      - decode_json_fields:
+          fields: ["message"]
+          target: ""
+          overwrite_keys: true
+    fields:
+      log_source: docker
+    fields_under_root: true
+
+  # Nginx access logs
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/nginx/access.log
+    fields:
+      service: nginx
+      log_type: nginx_access
+    fields_under_root: true
+    multiline.pattern: '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}'
+    multiline.negate: true
+    multiline.match: after
+
+  # Nginx error logs
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/nginx/error.log
+    fields:
+      service: nginx
+      log_type: nginx_error
+    fields_under_root: true
+
+  # MySQL logs
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/mysql/error.log
+    fields:
+      service: mysql
+      log_type: mysql_error
+    fields_under_root: true
+
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/mysql/slow.log
+    fields:
+      service: mysql
+      log_type: mysql_slow
+    fields_under_root: true
+    multiline.pattern: '^# Time:'
+    multiline.negate: true
+    multiline.match: after
+
+  # System logs
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/syslog
+      - /var/log/auth.log
+    fields:
+      service: system
+      log_type: syslog
+    fields_under_root: true
+
+  # Application-specific logs
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/eduhub/*.log
+    fields:
+      service: eduhub
+      log_type: application
+    fields_under_root: true
+    json.keys_under_root: true
+    json.add_error_key: true
+
+  # Backup logs
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/*backup*.log
+    fields:
+      service: backup
+      log_type: backup
+    fields_under_root: true
+
+# Processors
+processors:
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+  - add_docker_metadata: ~
+  - add_kubernetes_metadata: ~
+  - timestamp:
+      field: '@timestamp'
+      layouts:
+        - '2006-01-02T15:04:05.000Z'
+        - '2006-01-02 15:04:05,000'
+      test:
+        - '2023-12-01T14:30:45.123Z'
+
+# Output to Logstash
+output.logstash:
+  hosts: ["logstash:5044"]
+  worker: 1
+  compression_level: 3
+  loadbalance: true
+
+# Alternative: Direct output to Elasticsearch (uncomment if not using Logstash)
+# output.elasticsearch:
+#   hosts: ["elasticsearch:9200"]
+#   index: "filebeat-%{[agent.version]}-%{+yyyy.MM.dd}"
+#   template.settings:
+#     index.number_of_shards: 1
+#     index.number_of_replicas: 0
+
+# Logging configuration
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat.log
+  keepfiles: 7
+  permissions: 0644
+
+# Monitoring (optional)
+monitoring:
+  enabled: false
+  elasticsearch:
+    hosts: ["elasticsearch:9200"]
+
+# Security (if using X-Pack security)
+# setup.template.settings:
+#   index.number_of_shards: 1
+#   index.codec: best_compression
+
+# HTTP endpoint for health checks
+http.enabled: true
+http.host: 0.0.0.0
+http.port: 5066
+
+# Registry file location
+filebeat.registry.path: /usr/share/filebeat/data/registry
+
+# Max message size
+filebeat.inputs:
+  - type: log
+    max_message_size: 10MiB

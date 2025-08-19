@@ -1,0 +1,81 @@
+[mysqld]
+# Server ID - must be unique for each MySQL server (different from master)
+server-id = 2
+
+# Relay log settings for slave
+relay-log = mysql-relay-bin
+relay-log-index = mysql-relay-bin.index
+
+# Binary logging on slave (for cascading replication if needed)
+log-bin = mysql-bin
+log-bin-index = mysql-bin.index
+binlog-format = ROW
+
+# GTID-based replication
+gtid-mode = ON
+enforce-gtid-consistency = ON
+
+# Slave settings
+read_only = 1
+super_read_only = 1
+
+# Skip certain errors during replication (use carefully)
+# slave-skip-errors = 1062,1032
+
+# Relay log settings
+max_relay_log_size = 1G
+relay_log_purge = ON
+
+# Replication settings
+replicate_wild_ignore_table = mysql.%
+replicate_wild_ignore_table = information_schema.%
+replicate_wild_ignore_table = performance_schema.%
+replicate_wild_ignore_table = sys.%
+
+# Character set and collation (must match master)
+character-set-server = utf8mb4
+collation-server = utf8mb4_unicode_ci
+
+# Connection settings
+max_connections = 200
+max_connect_errors = 1000
+
+# Buffer pool settings (can be smaller than master for read-only)
+innodb_buffer_pool_size = 256M
+innodb_log_file_size = 128M
+
+# Query cache (disabled in MySQL 8.0)
+query_cache_type = 0
+query_cache_size = 0
+
+# Slow query log
+slow_query_log = 1
+slow_query_log_file = /var/log/mysql/slow.log
+long_query_time = 2
+
+# Error log
+log-error = /var/log/mysql/error.log
+
+# Table cache settings
+table_open_cache = 2000
+table_definition_cache = 1400
+
+# Thread settings
+thread_cache_size = 10
+
+# MyISAM settings
+key_buffer_size = 32M
+
+# InnoDB settings
+innodb_file_per_table = 1
+innodb_open_files = 400
+innodb_io_capacity = 400
+innodb_flush_method = O_DIRECT
+
+# Slave parallel execution
+slave_parallel_workers = 4
+slave_parallel_type = LOGICAL_CLOCK
+slave_preserve_commit_order = 1
+
+# Network settings
+slave_net_timeout = 60
