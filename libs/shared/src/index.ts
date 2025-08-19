@@ -31,3 +31,5 @@ export * from './database/database-config.service';
 // export * from './decorators/trace.decorator';
 // export * from './interceptors/tracing.interceptor';
 export * from './shared.module';
+export * from './utils/response.helper';
+export * from './filters/global-exception.filter';

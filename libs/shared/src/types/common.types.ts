@@ -10,13 +10,9 @@ export interface PaginationResponse<T> {
 }
 
 export interface ApiResponse<T = any> {
-  data?: T;
-  error?: {
-    code: string;
-    message: string;
-    details?: any;
-    request_id?: string;
-  };
+  success: boolean;
+  message: string;
+  data: T | null;
 }
 
 export interface AuditLog {

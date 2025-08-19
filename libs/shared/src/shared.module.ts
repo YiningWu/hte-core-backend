@@ -78,19 +78,10 @@ import { DatabaseConfigService } from './database/database-config.service';
     // TracingService, // Temporarily disabled for development
     // TracingInterceptor, // Temporarily disabled for development
     
-    // Global Guards
-    {
-      provide: APP_GUARD,
-      useClass: JwtAuthGuard,
-    },
-    {
-      provide: APP_GUARD,
-      useClass: RolesGuard,
-    },
-    {
-      provide: APP_GUARD,
-      useClass: RateLimitGuard,
-    },
+    // Guards (available for injection but not global)
+    JwtAuthGuard,
+    RolesGuard,
+    RateLimitGuard,
   ],
   exports: [
     // Infrastructure Services

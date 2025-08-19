@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { GlobalExceptionFilter } from '@eduhub/shared';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -25,6 +26,8 @@ async function bootstrap() {
       enableImplicitConversion: true,
     },
   }));
+
+  app.useGlobalFilters(new GlobalExceptionFilter());
 
   app.use(helmet());
   app.use(compression());

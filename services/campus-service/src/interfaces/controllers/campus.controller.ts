@@ -12,12 +12,12 @@ import {
   ValidationPipe,
   UseGuards
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiHeader } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiHeader, ApiParam, ApiBody } from '@nestjs/swagger';
 import { CampusService } from '../../application/services/campus.service';
 import { CreateCampusDto } from '../dto/create-campus.dto';
 import { CreateClassroomDto } from '../dto/create-classroom.dto';
 import { CreateBillingProfileDto } from '../dto/create-billing-profile.dto';
-import { ApiResponse as ApiResponseType, JwtAuthGuard } from '@eduhub/shared';
+import { ApiResponse as ApiResponseType, JwtAuthGuard, ResponseHelper } from '@eduhub/shared';
 
 @ApiTags('Campuses')
 @Controller('campuses')
@@ -28,8 +28,55 @@ export class CampusController {
   constructor(private readonly campusService: CampusService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create a new campus' })
-  @ApiResponse({ status: HttpStatus.CREATED, description: 'Campus created successfully' })
+  @ApiOperation({ 
+    summary: 'Create a new campus',
+    description: 'Creates a new campus for the organization with location and configuration details.'
+  })
+  @ApiBody({ 
+    type: CreateCampusDto,
+    description: 'Campus creation data',
+    examples: {
+      example1: {
+        summary: 'New campus in Beijing',
+        value: {
+          org_id: 1,
+          name: 'Beijing Main Campus',
+          code: 'BJ001',
+          type: 'DIRECT',
+          status: 'PREPARATION',
+          province: 'Beijing',
+          city: 'Beijing',
+          district: 'Chaoyang',
+          address: '123 Education Street',
+          latitude: 39.9042,
+          longitude: 116.4074,
+          phone: '+86 10-8888-8888',
+          email: 'beijing@example.com',
+          area: 5000,
+          capacity: 500
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: HttpStatus.CREATED, 
+    description: 'Campus created successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string', example: '校园创建成功' },
+        data: {
+          type: 'object',
+          properties: {
+            campus_id: { type: 'number', example: 1 },
+            created_at: { type: 'string', format: 'date-time', example: '2024-01-01T12:00:00.000Z' }
+          }
+        }
+      }
+    }
+  })
+  @ApiHeader({ name: 'X-Org-Id', description: 'Organization ID (required)', required: true, schema: { type: 'string', example: '1' } })
   async create(
     @Body(ValidationPipe) createCampusDto: CreateCampusDto,
     @Headers('X-Org-Id') orgId: string
@@ -42,29 +89,99 @@ export class CampusController {
       org_id: parseInt(orgId)
     });
 
-    return {
-      data: {
-        campus_id: campus.campus_id,
-        created_at: campus.created_at
-      }
-    };
+    return ResponseHelper.created({
+      campus_id: campus.campus_id,
+      created_at: campus.created_at
+    }, '校园创建成功');
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get campus by ID' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Campus found' })
+  @ApiOperation({ 
+    summary: 'Get campus by ID',
+    description: 'Retrieves detailed campus information including location and configuration.'
+  })
+  @ApiParam({ name: 'id', type: 'number', description: 'Campus ID', example: 1 })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: 'Campus found',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string', example: '校园信息获取成功' },
+        data: {
+          type: 'object',
+          properties: {
+            campus_id: { type: 'number', example: 1 },
+            org_id: { type: 'number', example: 1 },
+            name: { type: 'string', example: 'Beijing Main Campus' },
+            code: { type: 'string', example: 'BJ001' },
+            type: { type: 'string', example: 'DIRECT' },
+            status: { type: 'string', example: 'ACTIVE' },
+            province: { type: 'string', example: 'Beijing' },
+            city: { type: 'string', example: 'Beijing' },
+            district: { type: 'string', example: 'Chaoyang' },
+            address: { type: 'string', example: '123 Education Street' },
+            latitude: { type: 'number', example: 39.9042 },
+            longitude: { type: 'number', example: 116.4074 },
+            phone: { type: 'string', example: '+86 10-8888-8888' },
+            email: { type: 'string', example: 'beijing@example.com' },
+            area: { type: 'number', example: 5000 },
+            capacity: { type: 'number', example: 500 },
+            created_at: { type: 'string', format: 'date-time' },
+            updated_at: { type: 'string', format: 'date-time' }
+          }
+        }
+      }
+    }
+  })
   async findById(
     @Param('id', ParseIntPipe) campusId: number,
     @Headers('X-Org-Id') orgId: string
   ): Promise<ApiResponseType<any>> {
     const campus = await this.campusService.findCampusById(campusId, parseInt(orgId));
     
-    return { data: campus };
+    return ResponseHelper.found(campus, '校园信息获取成功');
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all campuses for organization' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Campuses retrieved successfully' })
+  @ApiOperation({ 
+    summary: 'Get all campuses for organization',
+    description: 'Retrieves all campuses belonging to the organization.'
+  })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: 'Campuses retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string', example: '校园列表获取成功' },
+        data: {
+          type: 'object',
+          properties: {
+            items: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  campus_id: { type: 'number', example: 1 },
+                  name: { type: 'string', example: 'Beijing Main Campus' },
+                  code: { type: 'string', example: 'BJ001' },
+                  type: { type: 'string', example: 'DIRECT' },
+                  status: { type: 'string', example: 'ACTIVE' },
+                  city: { type: 'string', example: 'Beijing' },
+                  address: { type: 'string', example: '123 Education Street' },
+                  capacity: { type: 'number', example: 500 }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  })
+  @ApiHeader({ name: 'X-Org-Id', description: 'Organization ID (required)', required: true, schema: { type: 'string', example: '1' } })
   async findAll(
     @Headers('X-Org-Id') orgId: string
   ): Promise<ApiResponseType<any>> {
@@ -73,12 +190,29 @@ export class CampusController {
     }
     const campuses = await this.campusService.findAllCampuses(parseInt(orgId));
     
-    return { data: { items: campuses } };
+    return ResponseHelper.found({ items: campuses }, '校园列表获取成功');
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update campus' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Campus updated successfully' })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: 'Campus updated successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string', example: '校园更新成功' },
+        data: {
+          type: 'object',
+          properties: {
+            updated: { type: 'boolean', example: true },
+            updated_at: { type: 'string', format: 'date-time', example: '2024-01-01T12:00:00.000Z' }
+          }
+        }
+      }
+    }
+  })
   async update(
     @Param('id', ParseIntPipe) campusId: number,
     @Body(ValidationPipe) updateData: Partial<CreateCampusDto>,
@@ -86,31 +220,59 @@ export class CampusController {
   ): Promise<ApiResponseType<{ updated: boolean; updated_at: Date }>> {
     const campus = await this.campusService.updateCampus(campusId, parseInt(orgId), updateData);
 
-    return {
-      data: {
-        updated: true,
-        updated_at: campus.updated_at
-      }
-    };
+    return ResponseHelper.updated({
+      updated: true,
+      updated_at: campus.updated_at
+    }, '校园更新成功');
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete campus' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Campus deleted successfully' })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: 'Campus deleted successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string', example: '校园删除成功' },
+        data: {
+          type: 'object',
+          properties: {
+            deleted: { type: 'boolean', example: true }
+          }
+        }
+      }
+    }
+  })
   async delete(
     @Param('id', ParseIntPipe) campusId: number,
     @Headers('X-Org-Id') orgId: string
   ): Promise<ApiResponseType<{ deleted: boolean }>> {
     await this.campusService.deleteCampus(campusId, parseInt(orgId));
 
-    return {
-      data: { deleted: true }
-    };
+    return ResponseHelper.deleted('校园删除成功');
   }
 
   @Post(':id/classrooms')
   @ApiOperation({ summary: 'Create classroom for campus' })
-  @ApiResponse({ status: HttpStatus.CREATED, description: 'Classroom created successfully' })
+  @ApiResponse({ 
+    status: HttpStatus.CREATED, 
+    description: 'Classroom created successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string', example: '教室创建成功' },
+        data: {
+          type: 'object',
+          properties: {
+            classroom_id: { type: 'number', example: 1 }
+          }
+        }
+      }
+    }
+  })
   async createClassroom(
     @Param('id', ParseIntPipe) campusId: number,
     @Body(ValidationPipe) createClassroomDto: CreateClassroomDto,
@@ -118,14 +280,29 @@ export class CampusController {
   ): Promise<ApiResponseType<{ classroom_id: number }>> {
     const classroom = await this.campusService.createClassroom(campusId, parseInt(orgId), createClassroomDto);
 
-    return {
-      data: { classroom_id: classroom.classroom_id }
-    };
+    return ResponseHelper.created({ classroom_id: classroom.classroom_id }, '教室创建成功');
   }
 
   @Post(':id/billing-profiles')
   @ApiOperation({ summary: 'Create billing profile for campus' })
-  @ApiResponse({ status: HttpStatus.CREATED, description: 'Billing profile created successfully' })
+  @ApiResponse({ 
+    status: HttpStatus.CREATED, 
+    description: 'Billing profile created successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string', example: '账单配置创建成功' },
+        data: {
+          type: 'object',
+          properties: {
+            id: { type: 'number', example: 1 },
+            created_at: { type: 'string', format: 'date-time', example: '2024-01-01T12:00:00.000Z' }
+          }
+        }
+      }
+    }
+  })
   async createBillingProfile(
     @Param('id', ParseIntPipe) campusId: number,
     @Body(ValidationPipe) createBillingProfileDto: CreateBillingProfileDto,
@@ -133,11 +310,9 @@ export class CampusController {
   ): Promise<ApiResponseType<{ id: number; created_at: Date }>> {
     const profile = await this.campusService.createBillingProfile(campusId, parseInt(orgId), createBillingProfileDto);
 
-    return {
-      data: {
-        id: profile.id,
-        created_at: profile.created_at
-      }
-    };
+    return ResponseHelper.created({
+      id: profile.id,
+      created_at: profile.created_at
+    }, '计费配置创建成功');
   }
 }

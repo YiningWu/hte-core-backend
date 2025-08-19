@@ -20,6 +20,7 @@ import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/roles.decorator';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import { StorageService, StorageFile } from './storage.service';
+import { ResponseHelper } from '../utils/response.helper';
 
 export interface UploadFileDto {
   folder: string;
@@ -70,10 +71,7 @@ export class StorageController {
       uploadDto.isPublic
     );
 
-    return {
-      success: true,
-      data: result
-    };
+    return ResponseHelper.success(result, '文件上传成功');
   }
 
   /**
@@ -91,10 +89,7 @@ export class StorageController {
       user.orgId
     );
 
-    return {
-      success: true,
-      data: result
-    };
+    return ResponseHelper.success(result, '预签名上传URL生成成功');
   }
 
   /**
@@ -145,10 +140,7 @@ export class StorageController {
 
     const url = await this.storageService.getPresignedDownloadUrl(key, parseInt(expiresIn, 10));
 
-    return {
-      success: true,
-      data: { url }
-    };
+    return ResponseHelper.success({ url }, '预签名下载URL生成成功');
   }
 
   /**
@@ -167,10 +159,7 @@ export class StorageController {
 
     await this.storageService.deleteFile(key);
 
-    return {
-      success: true,
-      message: 'File deleted successfully'
-    };
+    return ResponseHelper.success(null, '文件删除成功');
   }
 
   /**
@@ -184,17 +173,14 @@ export class StorageController {
   ) {
     const files = await this.storageService.listFiles(folder, user.orgId, parseInt(maxKeys, 10));
 
-    return {
-      success: true,
-      data: {
-        files: files.map(file => ({
-          key: file.Key,
-          size: file.Size,
-          lastModified: file.LastModified,
-          etag: file.ETag
-        }))
-      }
-    };
+    return ResponseHelper.success({
+      files: files.map(file => ({
+        key: file.Key,
+        size: file.Size,
+        lastModified: file.LastModified,
+        etag: file.ETag
+      }))
+    }, '文件列表获取成功');
   }
 
   /**
@@ -213,16 +199,13 @@ export class StorageController {
     try {
       const metadata = await this.storageService.getFileMetadata(key);
 
-      return {
-        success: true,
-        data: {
-          contentType: metadata.ContentType,
-          contentLength: metadata.ContentLength,
-          lastModified: metadata.LastModified,
-          etag: metadata.ETag,
-          metadata: metadata.Metadata
-        }
-      };
+      return ResponseHelper.success({
+        contentType: metadata.ContentType,
+        contentLength: metadata.ContentLength,
+        lastModified: metadata.LastModified,
+        etag: metadata.ETag,
+        metadata: metadata.Metadata
+      }, '文件元数据获取成功');
     } catch (error) {
       if (error.message.includes('NoSuchKey') || error.message.includes('Not Found')) {
         throw new NotFoundException('File not found');
@@ -239,14 +222,11 @@ export class StorageController {
   async getStorageStats(@CurrentUser() user: any) {
     const stats = await this.storageService.getStorageStats(user.orgId);
 
-    return {
-      success: true,
-      data: {
-        fileCount: stats.count,
-        totalSize: stats.totalSize,
-        totalSizeFormatted: this.formatBytes(stats.totalSize)
-      }
-    };
+    return ResponseHelper.success({
+      fileCount: stats.count,
+      totalSize: stats.totalSize,
+      totalSizeFormatted: this.formatBytes(stats.totalSize)
+    }, '存储统计获取成功');
   }
 
   /**
@@ -270,11 +250,10 @@ export class StorageController {
 
     await this.storageService.copyFile(dto.sourceKey, dto.destinationKey);
 
-    return {
-      success: true,
-      message: 'File copied successfully',
-      data: { destinationKey: dto.destinationKey }
-    };
+    return ResponseHelper.success(
+      { destinationKey: dto.destinationKey },
+      '文件复制成功'
+    );
   }
 
   private formatBytes(bytes: number): string {
