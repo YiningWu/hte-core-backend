@@ -278,6 +278,8 @@ EduHub 是一个基于微服务架构的教育管理系统，包含用户服务�
 **Response (200 OK):**
 ```json
 {
+  "success": true,
+  "message": "用户列表获取成功",
   "data": {
     "items": [
       {
@@ -323,6 +325,8 @@ EduHub 是一个基于微服务架构的教育管理系统，包含用户服务�
 **Response (200 OK):**
 ```json
 {
+  "success": true,
+  "message": "用户更新成功",
   "data": {
     "updated": true,
     "updated_at": "2024-01-01T12:00:00.000Z"
@@ -348,6 +352,8 @@ EduHub 是一个基于微服务架构的教育管理系统，包含用户服务�
 **Response (200 OK):**
 ```json
 {
+  "success": true,
+  "message": "用户删除成功",
   "data": {
     "deleted": true
   }
@@ -372,6 +378,8 @@ EduHub 是一个基于微服务架构的教育管理系统，包含用户服务�
 **Response (200 OK):**
 ```json
 {
+  "success": true,
+  "message": "变更历史获取成功",
   "data": {
     "items": [
       {
@@ -435,6 +443,8 @@ EduHub 是一个基于微服务架构的教育管理系统，包含用户服务�
 **Response (201 Created):**
 ```json
 {
+  "success": true,
+  "message": "校园创建成功",
   "data": {
     "campus_id": 1,
     "created_at": "2024-01-01T12:00:00.000Z"
@@ -454,6 +464,8 @@ EduHub 是一个基于微服务架构的教育管理系统，包含用户服务�
 **Response (200 OK):**
 ```json
 {
+  "success": true,
+  "message": "校园信息获取成功",
   "data": {
     "campus_id": 1,
     "org_id": 1,
@@ -490,6 +502,8 @@ EduHub 是一个基于微服务架构的教育管理系统，包含用户服务�
 **Response (200 OK):**
 ```json
 {
+  "success": true,
+  "message": "校园列表获取成功",
   "data": {
     "items": [
       {
@@ -534,6 +548,8 @@ EduHub 是一个基于微服务架构的教育管理系统，包含用户服务�
 **Response (201 Created):**
 ```json
 {
+  "success": true,
+  "message": "教室创建成功",
   "data": {
     "classroom_id": 1
   }
@@ -811,6 +827,8 @@ Content-Disposition: attachment; filename="file.pdf"
 **Response (201 Created):**
 ```json
 {
+  "success": true,
+  "message": "薪资标准创建成功",
   "data": {
     "comp_id": 456,
     "created_at": "2024-01-01T12:00:00.000Z"
@@ -833,6 +851,8 @@ Content-Disposition: attachment; filename="file.pdf"
 **Response (200 OK):**
 ```json
 {
+  "success": true,
+  "message": "有效薪资标准获取成功",
   "data": {
     "user_id": 123,
     "date": "2024-01-15",
@@ -858,6 +878,8 @@ Content-Disposition: attachment; filename="file.pdf"
 **Response (200 OK):**
 ```json
 {
+  "success": true,
+  "message": "薪资计算预览获取成功",
   "data": {
     "user_id": 123,
     "month": "2024-01",
@@ -893,6 +915,8 @@ Content-Disposition: attachment; filename="file.pdf"
 **Response (201 Created):**
 ```json
 {
+  "success": true,
+  "message": "薪资单生成成功",
   "data": {
     "run_id": 789,
     "status": "GENERATED"
@@ -922,6 +946,8 @@ Content-Disposition: attachment; filename="file.pdf"
 **Response (202 Accepted):**
 ```json
 {
+  "success": true,
+  "message": "批量薪资单生成任务提交成功",
   "data": {
     "batch_id": "batch-001",
     "total_count": 3,
@@ -949,6 +975,8 @@ Content-Disposition: attachment; filename="file.pdf"
 **Response (200 OK):**
 ```json
 {
+  "success": true,
+  "message": "薪资单状态更新成功",
   "data": {
     "run_id": 789,
     "status": "CONFIRMED"
@@ -975,6 +1003,8 @@ Content-Disposition: attachment; filename="file.pdf"
 **Response (200 OK):**
 ```json
 {
+  "success": true,
+  "message": "薪资单列表获取成功",
   "data": {
     "items": [
       {
