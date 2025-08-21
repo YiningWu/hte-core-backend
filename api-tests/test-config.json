@@ -2,7 +2,8 @@
   "baseUrls": {
     "userService": "http://localhost:3001",
     "campusService": "http://localhost:3002", 
-    "payrollService": "http://localhost:3003"
+    "payrollService": "http://localhost:3003",
+    "billingService": "http://localhost:3004"
   },
   "testData": {
     "admin": {

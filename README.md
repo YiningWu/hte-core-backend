@@ -25,7 +25,7 @@
 
 ## 📖 项目简介
 
-EduHub 是一个基于微服务架构的现代化教育管理系统，采用 **NestJS + TypeScript** 开发，支持用户管理、校区管理、薪资管理等核心功能。系统具备企业级的可扩展性、高可用性和完整的安全保障。
+EduHub 是一个基于微服务架构的现代化教育管理系统，采用 **NestJS + TypeScript** 开发，支持用户管理、校区管理、薪资管理、账单管理等核心功能。系统具备企业级的可扩展性、高可用性和完整的安全保障。
 
 ### 🎯 系统特点
 
@@ -83,6 +83,7 @@ mysql -h 127.0.0.1 -P 3307 -u root -prootpassword -e "SHOW DATABASES;"
 curl http://localhost:3001/healthz  # 用户服务
 curl http://localhost:3002/healthz  # 校区服务
 curl http://localhost:3003/healthz  # 薪资服务
+curl http://localhost:3004/healthz  # 账单服务
 ```
 
 ### 📚 访问服务文档
@@ -90,6 +91,7 @@ curl http://localhost:3003/healthz  # 薪资服务
 - **用户服务**: http://localhost:3001/api/docs
 - **校区服务**: http://localhost:3002/api/docs
 - **薪资服务**: http://localhost:3003/api/docs
+- **账单服务**: http://localhost:3004/api/docs
 
 ---
 
@@ -147,6 +149,12 @@ curl http://localhost:3003/healthz  # 薪资服务
 <td>请求去重安全</td>
 <td>Redis缓存，拦截器机制</td>
 </tr>
+<tr>
+<td><b>🧾 账单管理服务</b></td>
+<td><span style="color: green;">✅ 已完成</span></td>
+<td>完整的财务管理功能</td>
+<td>账本管理，老师分成，报表统计</td>
+</tr>
 </tbody>
 </table>
 
@@ -182,6 +190,14 @@ curl http://localhost:3003/healthz  # 薪资服务
 - **批量处理**: 月度薪资批量生成 + 异步任务队列
 - **状态管理**: 薪资单状态流转 + 支付确认
 
+#### 🧾 账单管理服务 (3004端口)
+- **账本管理**: 多校区独立账本 + 货币类型支持 + 状态管理
+- **类目管理**: 收支分类管理 + 老师分成配置 + 默认类目
+- **账单处理**: 单条/批量创建 + 幂等性保护 + 状态流转
+- **老师分成**: 自动计算分成金额 + 比例管理 + 历史记录
+- **报表统计**: 多维度报表 + 趋势分析 + 导出功能
+- **审计追踪**: 完整操作日志 + 变更记录 + 权限控制
+
 ### 技术基础设施
 
 #### 🔐 安全保障体系
@@ -205,17 +221,17 @@ curl http://localhost:3003/healthz  # 薪资服务
 ### 系统架构图
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   User Service  │    │ Campus Service  │    │Payroll Service  │
-│   (Port: 3001)  │    │   (Port: 3002)  │    │  (Port: 3003)   │
-│                 │    │                 │    │                 │
-│ • 用户管理       │    │ • 校区管理       │    │ • 薪资计算       │
-│ • 身份认证       │    │ • 组织管理       │    │ • 批量处理       │
-│ • 权限控制       │    │ • 税务配置       │    │ • 状态管理       │
-└─────────┬───────┘    └─────────┬───────┘    └─────────┬───────┘
-          │                      │                      │
-          └──────────────────────┼──────────────────────┘
-                                 │
+┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│   User Service  │  │ Campus Service  │  │Payroll Service  │  │Billing Service  │
+│   (Port: 3001)  │  │   (Port: 3002)  │  │  (Port: 3003)   │  │  (Port: 3004)   │
+│                 │  │                 │  │                 │  │                 │
+│ • 用户管理       │  │ • 校区管理       │  │ • 薪资计算       │  │ • 账本管理       │
+│ • 身份认证       │  │ • 组织管理       │  │ • 批量处理       │  │ • 账单处理       │
+│ • 权限控制       │  │ • 税务配置       │  │ • 状态管理       │  │ • 老师分成       │
+└─────────┬───────┘  └─────────┬───────┘  └─────────┬───────┘  └─────────┬───────┘
+          │                    │                    │                    │
+          └────────────────────┼────────────────────┼────────────────────┘
+                               │                    │
                     ┌─────────────┴─────────────┐
                     │     Shared Module         │
                     │                           │
@@ -237,7 +253,8 @@ curl http://localhost:3003/healthz  # 薪资服务
     │ • 用户数据  │         │ • 缓存存储      │      │ • 避免端口冲突  │
     │ • 校区数据  │         │ • 会话管理      │      │ • 健康检查     │
     │ • 薪资数据  │         │ • 消息队列      │      │ • 监控指标     │
-    │ • 审计日志  │         │ • 分布式锁      │      │               │
+    │ • 账单数据  │         │ • 分布式锁      │      │               │
+    │ • 审计日志  │         │               │      │               │
     └───────────┘         └───────────────┘      └───────────────┘
 ```
 
@@ -260,6 +277,7 @@ curl http://localhost:3003/healthz  # 薪资服务
 | User Service | 3001 | 用户管理 + 认证 | http://localhost:3001/api/docs | |
 | Campus Service | 3002 | 校区管理 | http://localhost:3002/api/docs | |
 | Payroll Service | 3003 | 薪资管理 | http://localhost:3003/api/docs | |
+| Billing Service | 3004 | 账单管理 | http://localhost:3004/api/docs | |
 | MySQL (Docker) | 3307 | 数据库 | - | 避免与本地MySQL(3306)冲突 |
 | Redis | 6379 | 缓存和消息队列 | - | |
 
@@ -298,6 +316,19 @@ POST   /core/payroll/compensations           # 创建薪资标准
 GET    /core/payroll/runs/preview            # 预览薪资计算
 POST   /core/payroll/runs/generate           # 生成工资单
 POST   /core/payroll/runs/generate-batch     # 批量生成
+```
+
+#### 🧾 账单管理 API (billing-service:3004)
+```http
+GET    /core/billing/books                   # 账本列表
+POST   /core/billing/books                   # 创建账本
+GET    /core/billing/categories              # 类目列表
+POST   /core/billing/categories              # 创建类目
+GET    /core/billing/entries                 # 账单条目列表
+POST   /core/billing/entries                 # 创建账单条目
+POST   /core/billing/entries/batch           # 批量创建账单
+GET    /core/billing/reports/overview        # 概览报表
+GET    /core/billing/reports/teacher-shares  # 老师分成报表
 ```
 
 #### 🔍 监控端点 (所有服务)
@@ -390,11 +421,13 @@ hte-core-backend/
 ├── services/
 │   ├── user-service/        # 用户服务
 │   ├── campus-service/      # 校区服务
-│   └── payroll-service/     # 薪资服务
+│   ├── payroll-service/     # 薪资服务
+│   └── billing-service/     # 账单服务
 ├── api-tests/               # API测试脚本
 │   ├── user-service/        # 用户服务API测试
 │   ├── campus-service/      # 校区服务API测试
 │   ├── payroll-service/     # 薪资服务API测试
+│   ├── billing-service/     # 账单服务API测试
 │   └── run-all-tests.sh     # 一键运行所有测试
 ├── docker/                  # Docker 配置
 ├── scripts/                 # 脚本工具
@@ -441,6 +474,7 @@ cd api-tests
 - **用户服务**: 认证API (登录/刷新/登出) + 用户管理API (CRUD+查询)
 - **校区服务**: 组织管理API + 校区管理API + 税务配置API
 - **薪资服务**: 薪资标准API + 工资单API + 批量处理
+- **账单服务**: 账本管理API + 账单条目API + 老师分成API + 报表API
 - **健康检查**: 所有服务的 `/healthz` 和 `/readyz` 端点
 
 #### 单独测试服务
@@ -462,6 +496,10 @@ cd ../campus-service
 cd ../payroll-service
 ./compensations-api.sh
 ./payroll-runs-api.sh
+
+# 账单服务测试
+cd ../billing-service
+./billing-api.sh
 ```
 
 #### 测试前置条件
@@ -502,7 +540,7 @@ fi
 
 # 检查服务端口
 echo -e "\n4. 检查服务端口："
-for port in 3001 3002 3003; do
+for port in 3001 3002 3003 3004; do
     if ss -tlnp | grep -q ":$port"; then
         echo "✅ 端口 $port 正在监听"
     else
@@ -571,6 +609,7 @@ DB_HOST=127.0.0.1 DB_PORT=3307 DB_USERNAME=root DB_PASSWORD=rootpassword npm run
 curl http://localhost:3001/healthz
 curl http://localhost:3002/healthz
 curl http://localhost:3003/healthz
+curl http://localhost:3004/healthz
 ```
 
 ### 日志查看
@@ -580,9 +619,11 @@ curl http://localhost:3003/healthz
 docker-compose logs -f user-service
 docker-compose logs -f campus-service
 docker-compose logs -f payroll-service
+docker-compose logs -f billing-service
 
 # 错误日志
 docker-compose logs --tail=100 user-service | grep ERROR
+docker-compose logs --tail=100 billing-service | grep ERROR
 ```
 
 ---

@@ -7,6 +7,7 @@ CONFIG_FILE="test-config.json"
 USER_SERVICE_URL=$(cat $CONFIG_FILE | jq -r '.baseUrls.userService')
 CAMPUS_SERVICE_URL=$(cat $CONFIG_FILE | jq -r '.baseUrls.campusService')
 PAYROLL_SERVICE_URL=$(cat $CONFIG_FILE | jq -r '.baseUrls.payrollService')
+BILLING_SERVICE_URL=$(cat $CONFIG_FILE | jq -r '.baseUrls.billingService')
 
 echo "=== EduHub 服务健康检查 ==="
 echo ""
@@ -49,6 +50,7 @@ check_health() {
 check_health "用户服务" $USER_SERVICE_URL
 check_health "校区服务" $CAMPUS_SERVICE_URL  
 check_health "薪资服务" $PAYROLL_SERVICE_URL
+check_health "账单服务" $BILLING_SERVICE_URL
 
 echo "=== 健康检查完成 ==="
 
@@ -73,6 +75,7 @@ check_docs() {
 check_docs "用户服务" $USER_SERVICE_URL
 check_docs "校区服务" $CAMPUS_SERVICE_URL
 check_docs "薪资服务" $PAYROLL_SERVICE_URL
+check_docs "账单服务" $BILLING_SERVICE_URL
 
 echo ""
 echo "=== 文档检查完成 ==="

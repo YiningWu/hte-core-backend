@@ -115,6 +115,35 @@ services:
       - /app/node_modules
     command: npm run dev
 
+  # Billing Service
+  billing-service:
+    build:
+      context: .
+      dockerfile: ./services/billing-service/Dockerfile
+    container_name: billing-service
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=development
+      - PORT=3004
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USERNAME=root
+      - DB_PASSWORD=rootpassword
+      - DB_DATABASE=billing_service
+      - REDIS_URL=redis://redis:6379
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-7b9912f04477299298ca7af2d6518026}
+      - JWT_SECRET=${JWT_SECRET:-your-jwt-secret-change-this-in-production-very-long-key-123456789}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/billing-service:/app
+      - /app/node_modules
+    command: npm run dev
+
   # API Gateway (Nginx)
   api-gateway:
     image: nginx:alpine
@@ -127,6 +156,7 @@ services:
       - user-service
       - campus-service
       - payroll-service
+      - billing-service
 
 volumes:
   mysql_data:

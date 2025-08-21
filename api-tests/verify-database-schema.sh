@@ -76,9 +76,21 @@ verify_table_schema "payroll_service" "user_compensation"
 verify_table_schema "payroll_service" "payroll_run"
 verify_table_schema "payroll_service" "audit_log"
 
+# 验证 billing_service 数据库
+echo ""
+echo "4️⃣ 验证 billing_service 数据库"
+echo "=========================================="
+
+verify_table_schema "billing_service" "ledger_book"
+verify_table_schema "billing_service" "ledger_category"
+verify_table_schema "billing_service" "ledger_entry"
+verify_table_schema "billing_service" "ledger_entry_teacher_share"
+verify_table_schema "billing_service" "ledger_attachment"
+verify_table_schema "billing_service" "ledger_audit"
+
 # 检查关键字段类型和约束
 echo ""
-echo "4️⃣ 关键字段验证"
+echo "5️⃣ 关键字段验证"
 echo "=========================================="
 
 echo "🔍 检查用户表关键字段..."
@@ -134,9 +146,28 @@ WHERE TABLE_SCHEMA = 'payroll_service'
 ORDER BY ORDINAL_POSITION;
 EOF
 
+# 检查账单表关键字段
+echo ""
+echo "🔍 检查账单表关键字段..."
+mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p$DB_PASS << 'EOF' 2>/dev/null
+USE billing_service;
+SELECT 
+    COLUMN_NAME, 
+    DATA_TYPE, 
+    IS_NULLABLE, 
+    COLUMN_DEFAULT,
+    COLUMN_KEY,
+    EXTRA
+FROM INFORMATION_SCHEMA.COLUMNS 
+WHERE TABLE_SCHEMA = 'billing_service' 
+  AND TABLE_NAME = 'ledger_entry'
+  AND COLUMN_NAME IN ('entry_id', 'org_id', 'campus_id', 'type', 'category_code', 'amount')
+ORDER BY ORDINAL_POSITION;
+EOF
+
 # 检查外键约束
 echo ""
-echo "5️⃣ 外键约束验证"
+echo "6️⃣ 外键约束验证"
 echo "=========================================="
 
 echo "🔗 user_service 外键约束："
@@ -180,9 +211,23 @@ WHERE TABLE_SCHEMA = 'payroll_service'
   AND REFERENCED_TABLE_NAME IS NOT NULL;
 EOF
 
+echo ""
+echo "🔗 billing_service 外键约束："
+mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p$DB_PASS << 'EOF' 2>/dev/null
+SELECT 
+    CONSTRAINT_NAME,
+    TABLE_NAME,
+    COLUMN_NAME,
+    REFERENCED_TABLE_NAME,
+    REFERENCED_COLUMN_NAME
+FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+WHERE TABLE_SCHEMA = 'billing_service' 
+  AND REFERENCED_TABLE_NAME IS NOT NULL;
+EOF
+
 # 检查唯一约束
 echo ""
-echo "6️⃣ 唯一约束验证"
+echo "7️⃣ 唯一约束验证"
 echo "=========================================="
 
 echo "🔑 user_service 唯一约束："
@@ -221,6 +266,20 @@ SELECT
     INDEX_NAME
 FROM INFORMATION_SCHEMA.STATISTICS
 WHERE TABLE_SCHEMA = 'payroll_service'
+  AND NON_UNIQUE = 0
+  AND INDEX_NAME != 'PRIMARY'
+ORDER BY TABLE_NAME, INDEX_NAME;
+EOF
+
+echo ""
+echo "🔑 billing_service 唯一约束："
+mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p$DB_PASS << 'EOF' 2>/dev/null
+SELECT 
+    TABLE_NAME,
+    COLUMN_NAME,
+    INDEX_NAME
+FROM INFORMATION_SCHEMA.STATISTICS
+WHERE TABLE_SCHEMA = 'billing_service'
   AND NON_UNIQUE = 0
   AND INDEX_NAME != 'PRIMARY'
 ORDER BY TABLE_NAME, INDEX_NAME;
