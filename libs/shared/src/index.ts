@@ -15,6 +15,7 @@ export * from './decorators/public.decorator';
 export * from './decorators/roles.decorator';
 export * from './decorators/rate-limit.decorator';
 export * from './decorators/current-user.decorator';
+export * from './decorators/idempotent.decorator';
 export * from './encryption/encryption.service';
 export * from './transformers/encrypted.transformer';
 export * from './communication/service-client';
@@ -23,8 +24,9 @@ export * from './communication/event-emitter.service';
 export * from './messaging/simple-message-broker.service';
 export * from './messaging/simple-domain-events';
 export * from './database/database-config.service';
-// Temporarily disabled for development - uncomment when AWS SDK is available
-// export * from './storage/storage.service';
+// Storage service enabled - supports both local and cloud storage
+export * from './storage/storage.service';
+// TODO: Fix storage controller dependencies
 // export * from './storage/storage.controller';
 // Temporarily disabled for development - uncomment when tracing dependencies are available
 // export * from './tracing/tracing.service';
@@ -33,3 +35,4 @@ export * from './database/database-config.service';
 export * from './shared.module';
 export * from './utils/response.helper';
 export * from './filters/global-exception.filter';
+export * from './interceptors/idempotent.interceptor';

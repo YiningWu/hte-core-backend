@@ -28,5 +28,8 @@
   },
   "dependencies": {
     "@fastify/static": "^7.0.4"
+  },
+  "optionalDependencies": {
+    "aws-sdk": "^2.1692.0"
   }
 }

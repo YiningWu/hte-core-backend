@@ -67,7 +67,6 @@ export class StorageController {
       storageFile,
       uploadDto.folder,
       user.userId,
-      user.orgId,
       uploadDto.isPublic
     );
 

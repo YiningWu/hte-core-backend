@@ -4,8 +4,8 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { GlobalExceptionFilter } from '@eduhub/shared';
 import { AppModule } from './app.module';
-import helmet from 'helmet';
-import compression from 'compression';
+import helmet from '@fastify/helmet';
+import compress from '@fastify/compress';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -29,8 +29,8 @@ async function bootstrap() {
 
   app.useGlobalFilters(new GlobalExceptionFilter());
 
-  app.use(helmet());
-  app.use(compression());
+  await app.register(helmet);
+  await app.register(compress);
 
   app.enableCors({
     origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],

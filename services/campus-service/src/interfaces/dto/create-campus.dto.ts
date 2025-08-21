@@ -1,5 +1,44 @@
-import { IsNotEmpty, IsEnum, IsOptional, IsString, Length, IsNumber, IsEmail, IsDateString, IsArray } from 'class-validator';
+import { IsNotEmpty, IsEnum, IsOptional, IsString, Length, IsNumber, IsEmail, IsDateString, IsArray, IsObject, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { CampusType, CampusStatus } from '@eduhub/shared';
+
+export class BusinessHoursDto {
+  @IsOptional()
+  @IsString()
+  'mon-fri'?: string; // e.g., "09:00-20:00"
+
+  @IsOptional()
+  @IsString()
+  'sat-sun'?: string; // e.g., "09:00-18:00"
+
+  @IsOptional()
+  @IsString()
+  monday?: string;
+
+  @IsOptional()
+  @IsString()
+  tuesday?: string;
+
+  @IsOptional()
+  @IsString()
+  wednesday?: string;
+
+  @IsOptional()
+  @IsString()
+  thursday?: string;
+
+  @IsOptional()
+  @IsString()
+  friday?: string;
+
+  @IsOptional()
+  @IsString()
+  saturday?: string;
+
+  @IsOptional()
+  @IsString()
+  sunday?: string;
+}
 
 export class CreateCampusDto {
   @IsNumber()
@@ -66,7 +105,10 @@ export class CreateCampusDto {
   email?: string;
 
   @IsOptional()
-  biz_hours?: any;
+  @IsObject()
+  @ValidateNested()
+  @Type(() => BusinessHoursDto)
+  biz_hours?: BusinessHoursDto;
 
   @IsDateString()
   @IsOptional()
@@ -82,6 +124,8 @@ export class CreateCampusDto {
 
   @IsArray()
   @IsOptional()
+  @IsString({ each: true })
+  @Length(1, 50, { each: true })
   trade_area_tags?: string[];
 
   @IsString()

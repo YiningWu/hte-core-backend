@@ -5,7 +5,7 @@ import { UserCompensation } from '../../domain/entities/user-compensation.entity
 import { PayrollRun } from '../../domain/entities/payroll-run.entity';
 import { CreateCompensationDto } from '../../interfaces/dto/create-compensation.dto';
 import { GeneratePayrollDto, GenerateBatchPayrollDto } from '../../interfaces/dto/generate-payroll.dto';
-import { PayrollStatus } from '@eduhub/shared';
+import { PayrollStatus, DistributedLockService } from '@eduhub/shared';
 import { startOfMonth, endOfMonth, getDaysInMonth, format } from 'date-fns';
 
 interface PayrollCalculationResult {
@@ -24,10 +24,29 @@ export class PayrollService {
     private readonly compensationRepository: Repository<UserCompensation>,
     @InjectRepository(PayrollRun)
     private readonly payrollRunRepository: Repository<PayrollRun>,
-    private readonly dataSource: DataSource
+    private readonly dataSource: DataSource,
+    private readonly lockService: DistributedLockService
   ) {}
 
   async createCompensation(createCompensationDto: CreateCompensationDto): Promise<UserCompensation> {
+    const lockKey = this.lockService.getCompensationLockKey(createCompensationDto.user_id);
+    
+    const result = await this.lockService.withLock(
+      lockKey,
+      async () => {
+        return await this.executeCompensationCreation(createCompensationDto);
+      },
+      { ttlSeconds: 30, maxRetries: 3 }
+    );
+
+    if (result === null) {
+      throw new ConflictException('Another compensation operation is in progress for this user. Please try again later.');
+    }
+
+    return result;
+  }
+
+  private async executeCompensationCreation(createCompensationDto: CreateCompensationDto): Promise<UserCompensation> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -195,12 +214,31 @@ export class PayrollService {
 
   async generateBatchPayrollRuns(generateBatchDto: GenerateBatchPayrollDto): Promise<{ batch_id: string; submitted: boolean; estimated: number }> {
     const batchId = `run-${generateBatchDto.month}-org${generateBatchDto.org_id}`;
+    const lockKey = this.lockService.getPayrollLockKey(generateBatchDto.org_id, generateBatchDto.month);
     
-    return {
-      batch_id: batchId,
-      submitted: true,
-      estimated: 100
-    };
+    const result = await this.lockService.withLock(
+      lockKey,
+      async () => {
+        // TODO: Implement actual batch processing logic
+        // This would typically involve:
+        // 1. Finding all active users in the organization
+        // 2. Generating payroll runs for each user
+        // 3. Using a job queue for processing
+        
+        return {
+          batch_id: batchId,
+          submitted: true,
+          estimated: 100
+        };
+      },
+      { ttlSeconds: 60, maxRetries: 2 }
+    );
+
+    if (result === null) {
+      throw new ConflictException('A batch payroll operation is already in progress for this organization and month.');
+    }
+
+    return result;
   }
 
   async updatePayrollRunStatus(runId: number, action: 'confirm' | 'pay'): Promise<PayrollRun> {

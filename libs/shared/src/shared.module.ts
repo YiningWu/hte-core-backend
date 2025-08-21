@@ -21,12 +21,16 @@ import { ServiceClient } from './communication/service-client';
 import { EventEmitterService } from './communication/event-emitter.service';
 import { MessageBrokerService } from './messaging/simple-message-broker.service';
 
+// Interceptors
+import { IdempotentInterceptor } from './interceptors/idempotent.interceptor';
+
 // Database & Config
 import { DatabaseConfigService } from './database/database-config.service';
 
 // Storage & Tracing
-// Temporarily disabled for development - uncomment when AWS SDK is available
-// import { StorageService } from './storage/storage.service';
+// Storage service enabled - supports both local and cloud storage
+import { StorageService } from './storage/storage.service';
+// TODO: Fix storage controller dependencies
 // import { StorageController } from './storage/storage.controller';
 // Temporarily disabled for development
 // import { TracingService } from './tracing/tracing.service';
@@ -36,7 +40,8 @@ import { DatabaseConfigService } from './database/database-config.service';
 @Module({
   imports: [ConfigModule],
   controllers: [
-    // StorageController // Temporarily disabled for development
+    // TODO: Enable when storage controller dependencies are fixed
+    // StorageController // Storage service enabled
   ],
   providers: [
     // Redis Connection
@@ -74,9 +79,12 @@ import { DatabaseConfigService } from './database/database-config.service';
     DatabaseConfigService,
     
     // Storage & Tracing
-    // StorageService, // Temporarily disabled for development
+    StorageService, // Storage service enabled
     // TracingService, // Temporarily disabled for development
     // TracingInterceptor, // Temporarily disabled for development
+    
+    // Interceptors
+    IdempotentInterceptor,
     
     // Guards (available for injection but not global)
     JwtAuthGuard,
@@ -106,9 +114,12 @@ import { DatabaseConfigService } from './database/database-config.service';
     DatabaseConfigService,
     
     // Storage & Tracing
-    // StorageService, // Temporarily disabled for development
+    StorageService, // Storage service enabled
     // TracingService, // Temporarily disabled for development
     // TracingInterceptor, // Temporarily disabled for development
+    
+    // Interceptors
+    IdempotentInterceptor,
     
     // Redis Client for direct access
     'REDIS_CLIENT',

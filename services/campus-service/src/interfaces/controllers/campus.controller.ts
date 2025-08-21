@@ -50,10 +50,17 @@ export class CampusController {
           address: '123 Education Street',
           latitude: 39.9042,
           longitude: 116.4074,
+          principal_user_id: 1001,
           phone: '+86 10-8888-8888',
           email: 'beijing@example.com',
+          biz_hours: {
+            'mon-fri': '09:00-20:00',
+            'sat-sun': '09:00-18:00'
+          },
           area: 5000,
-          capacity: 500
+          capacity: 500,
+          trade_area_tags: ['地铁10号线', '商圈A', 'CBD核心区'],
+          remark: '主要校区，设施完善'
         }
       }
     }

@@ -11,14 +11,15 @@ import {
   HttpStatus,
   ParseIntPipe,
   ValidationPipe,
-  UseGuards
+  UseGuards,
+  UseInterceptors
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiHeader, ApiParam, ApiQuery, ApiBody } from '@nestjs/swagger';
 import { UserService } from '../../application/services/user.service';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { QueryUserDto } from '../dto/query-user.dto';
-import { ApiResponse as ApiResponseType, PaginationResponse, JwtAuthGuard, ResponseHelper } from '@eduhub/shared';
+import { ApiResponse as ApiResponseType, PaginationResponse, JwtAuthGuard, ResponseHelper, Idempotent, IdempotentInterceptor } from '@eduhub/shared';
 import { User } from '../../domain/entities/user.entity';
 
 @ApiTags('Users')
@@ -30,9 +31,11 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Post()
+  @UseInterceptors(IdempotentInterceptor)
+  @Idempotent({ ttlSeconds: 600 }) // 10 minutes for user creation
   @ApiOperation({ 
     summary: 'Create a new user',
-    description: 'Creates a new user in the organization with the provided details. Returns the user ID and creation timestamp.'
+    description: 'Creates a new user in the organization with the provided details. Returns the user ID and creation timestamp. This endpoint supports idempotency via X-Request-Id header.'
   })
   @ApiBody({ 
     type: CreateUserDto,
@@ -234,9 +237,11 @@ export class UserController {
   }
 
   @Patch(':id')
+  @UseInterceptors(IdempotentInterceptor)
+  @Idempotent({ ttlSeconds: 300 }) // 5 minutes for user updates
   @ApiOperation({ 
     summary: 'Update user',
-    description: 'Updates user information. Only provided fields will be updated.'
+    description: 'Updates user information. Only provided fields will be updated. This endpoint supports idempotency via X-Request-Id header.'
   })
   @ApiParam({ name: 'id', type: 'number', description: 'User ID', example: 123 })
   @ApiBody({ 
