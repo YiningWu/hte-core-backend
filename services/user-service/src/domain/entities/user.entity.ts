@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index, ManyToMany, JoinTable } from 'typeorm';
 import { EmploymentStatus, Education, Gender } from '@eduhub/shared';
 import { Role } from './role.entity';
+import * as crypto from 'crypto';
 
 @Entity('user')
 @Index(['org_id', 'campus_id'])
@@ -37,7 +38,7 @@ export class User {
     length: 200, 
     unique: false, // Remove unique constraint as encrypted values will differ
     transformer: {
-      to: (value: string) => value ? require('crypto').createHash('sha256').update(value + process.env.ENCRYPTION_KEY).digest('hex') : value,
+      to: (value: string) => (value ? crypto.createHash('sha256').update(value + process.env.ENCRYPTION_KEY).digest('hex') : value),
       from: (value: string) => value // Hashed values cannot be decrypted
     }
   })
@@ -85,7 +86,6 @@ export class User {
   get id_card_no(): string {
     if (this.id_card_no_encrypted) {
       try {
-        const crypto = require('crypto');
         const parts = this.id_card_no_encrypted.split(':');
         if (parts.length === 2) {
           const decipher = crypto.createDecipher('aes-256-cbc', process.env.ENCRYPTION_KEY);
@@ -102,7 +102,6 @@ export class User {
 
   set id_card_no(value: string) {
     if (value) {
-      const crypto = require('crypto');
       // Create hash for uniqueness checking
       this.id_card_no_hash = crypto.createHash('sha256').update(value + process.env.ENCRYPTION_KEY).digest('hex');
       

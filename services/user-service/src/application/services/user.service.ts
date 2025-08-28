@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, Like } from 'typeorm';
+import { Repository } from 'typeorm';
 import { User } from '../../domain/entities/user.entity';
 import { Role } from '../../domain/entities/role.entity';
 import { AuditLog } from '../../domain/entities/audit-log.entity';
@@ -9,7 +9,7 @@ import { UpdateUserDto } from '../../interfaces/dto/update-user.dto';
 import { QueryUserDto } from '../../interfaces/dto/query-user.dto';
 import { PaginationResponse, EntityType, ChangeAction } from '@eduhub/shared';
 import { MessageBrokerService } from '@eduhub/shared';
-import { DOMAIN_EVENTS, UserCreatedEvent, UserUpdatedEvent, UserDeletedEvent } from '@eduhub/shared';
+import { DOMAIN_EVENTS } from '@eduhub/shared';
 
 @Injectable()
 export class UserService {
