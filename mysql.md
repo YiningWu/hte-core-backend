@@ -71,6 +71,8 @@ CREATE TABLE `ledger_category` (
   `name` varchar(255) NOT NULL COMMENT '类目名称',
   `isTeacherRelated` tinyint(1) DEFAULT '0' COMMENT '是否与老师分成相关',
   `isActive` tinyint(1) DEFAULT '1' COMMENT '是否启用',
+  `createdAt` timestamp DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updatedAt` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`categoryId`),
   UNIQUE KEY `UQ_category_code_per_org_type` (`orgId`,`type`,`code`)
 );
@@ -105,6 +107,8 @@ CREATE TABLE `ledger_entry` (
   `status` enum('normal','voided','draft') DEFAULT 'normal' COMMENT '条目状态',
   `attachmentsCount` int DEFAULT '0' COMMENT '附件数量冗余字段',
   `createdBy` bigint NOT NULL COMMENT '创建操作人ID',
+  `createdAt` timestamp DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updatedAt` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `requestId` varchar(255) DEFAULT NULL COMMENT '幂等请求ID',
   PRIMARY KEY (`entryId`)
 );
@@ -129,6 +133,7 @@ CREATE TABLE `ledger_entry_teacher_share` (
   `teacherName` varchar(255) NOT NULL COMMENT '老师姓名',
   `ratio` decimal(5,4) NOT NULL COMMENT '分成比例 [0,1]',
   `money` decimal(12,2) DEFAULT '0.00' COMMENT '分成金额',
+  `createdAt` timestamp DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (`id`)
 );
 ```
@@ -149,6 +154,7 @@ CREATE TABLE `ledger_attachment` (
   `mimeType` varchar(100) DEFAULT NULL COMMENT '文件MIME类型',
   `originalName` varchar(255) DEFAULT NULL COMMENT '原始文件名',
   `size` bigint DEFAULT NULL COMMENT '文件大小(字节)',
+  `createdAt` timestamp DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (`id`)
 );
 ```
@@ -171,6 +177,7 @@ CREATE TABLE `ledger_audit` (
   `reason` varchar(255) DEFAULT NULL COMMENT '操作原因',
   `ipAddress` varchar(45) DEFAULT NULL COMMENT 'IP地址',
   `deviceInfo` varchar(512) DEFAULT NULL COMMENT '设备信息',
+  `createdAt` timestamp DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (`id`)
 );
 ```
@@ -179,35 +186,258 @@ CREATE TABLE `ledger_audit` (
 
 ### 数据库：`user_service`
 
-> **注意**: 用户服务的具体表结构需要根据实际entity文件补充完善。
+用户服务管理用户主数据及角色信息。
 
-主要表结构：
-- `user`: 用户基本信息表
-- `role`: 角色定义表  
-- `audit_log`: 用户服务审计日志
+#### 1. 用户表 (`user`)
+
+```sql
+CREATE TABLE `user` (
+  `user_id` bigint NOT NULL AUTO_INCREMENT COMMENT '用户ID',
+  `org_id` bigint NOT NULL COMMENT '机构ID',
+  `campus_id` bigint DEFAULT NULL COMMENT '校区ID',
+  `username` varchar(50) NOT NULL UNIQUE COMMENT '用户名',
+  `employment_status` enum('ACTIVE','LEAVE','SUSPEND') NOT NULL DEFAULT 'ACTIVE' COMMENT '任职状态',
+  `hire_date` date NOT NULL COMMENT '入职日期',
+  `email` varchar(100) NOT NULL UNIQUE COMMENT '邮箱',
+  `phone` varchar(20) NOT NULL UNIQUE COMMENT '手机号',
+  `id_card_no_hash` varchar(200) NOT NULL UNIQUE COMMENT '身份证号哈希',
+  `id_card_no_encrypted` text COMMENT '加密身份证号',
+  `id_card_file` varchar(500) DEFAULT NULL COMMENT '身份证文件',
+  `education` enum('PRIMARY','MIDDLE','HIGH','VOCATIONAL','ASSOCIATE','BACHELOR','MASTER','DOCTOR','OTHER') DEFAULT 'OTHER' COMMENT '学历',
+  `hukou_address` varchar(200) DEFAULT NULL COMMENT '户籍地址',
+  `current_address` varchar(200) DEFAULT NULL COMMENT '现居地址',
+  `gender` enum('MALE','FEMALE','OTHER','UNDISCLOSED') DEFAULT 'UNDISCLOSED' COMMENT '性别',
+  `role` varchar(50) DEFAULT NULL COMMENT '主角色',
+  `age` tinyint DEFAULT NULL COMMENT '年龄',
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`user_id`)
+);
+```
+
+#### 2. 角色表 (`role`)
+
+```sql
+CREATE TABLE `role` (
+  `role_id` bigint NOT NULL AUTO_INCREMENT COMMENT '角色ID',
+  `code` varchar(50) NOT NULL UNIQUE COMMENT '角色编码',
+  `name` varchar(100) NOT NULL COMMENT '角色名称',
+  PRIMARY KEY (`role_id`)
+);
+```
+
+#### 3. 用户角色关联表 (`user_role`)
+
+```sql
+CREATE TABLE `user_role` (
+  `user_id` bigint NOT NULL COMMENT '用户ID',
+  `role_id` bigint NOT NULL COMMENT '角色ID',
+  PRIMARY KEY (`user_id`, `role_id`)
+);
+```
+
+#### 4. 审计日志表 (`audit_log`)
+
+```sql
+CREATE TABLE `audit_log` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '日志ID',
+  `org_id` bigint NOT NULL COMMENT '机构ID',
+  `actor_user_id` bigint NOT NULL COMMENT '操作者ID',
+  `entity_type` varchar(50) NOT NULL COMMENT '实体类型',
+  `entity_id` bigint NOT NULL COMMENT '实体ID',
+  `action` varchar(20) NOT NULL COMMENT '操作类型',
+  `diff_json` json DEFAULT NULL COMMENT '变更内容',
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `request_id` varchar(100) DEFAULT NULL COMMENT '请求ID',
+  PRIMARY KEY (`id`)
+);
+```
 
 ## 校区服务 (Campus Service)
 
 ### 数据库：`campus_service`
 
-> **注意**: 校区服务的具体表结构需要根据实际entity文件补充完善。
+校区服务维护机构、校区及教室等信息。
 
-主要表结构：
-- `campus`: 校区信息表
-- `classroom`: 教室资源表
-- `org`: 机构信息表
-- `tax_profile`: 税务配置表
-- `campus_billing_profile`: 校区计费配置表
+#### 1. 机构表 (`org`)
+
+```sql
+CREATE TABLE `org` (
+  `org_id` bigint NOT NULL AUTO_INCREMENT COMMENT '机构ID',
+  `name` varchar(100) NOT NULL UNIQUE COMMENT '机构名称',
+  `code` varchar(50) NOT NULL UNIQUE COMMENT '机构编码',
+  `remark` text DEFAULT NULL COMMENT '备注',
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`org_id`)
+);
+```
+
+#### 2. 税务配置表 (`tax_profile`)
+
+```sql
+CREATE TABLE `tax_profile` (
+  `tax_profile_id` bigint NOT NULL AUTO_INCREMENT COMMENT '税务配置ID',
+  `name` varchar(100) NOT NULL UNIQUE COMMENT '名称',
+  `rate` decimal(5,4) NOT NULL COMMENT '税率',
+  `is_tax_included` tinyint(1) DEFAULT 0 COMMENT '含税标记',
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`tax_profile_id`)
+);
+```
+
+#### 3. 校区表 (`campus`)
+
+```sql
+CREATE TABLE `campus` (
+  `campus_id` bigint NOT NULL AUTO_INCREMENT COMMENT '校区ID',
+  `org_id` bigint NOT NULL COMMENT '机构ID',
+  `name` varchar(100) NOT NULL COMMENT '校区名称',
+  `code` varchar(50) NOT NULL UNIQUE COMMENT '校区编码',
+  `type` enum('DIRECT','FRANCHISE','PARTNER') NOT NULL COMMENT '校区类型',
+  `status` enum('PREPARATION','TRIAL','OPEN','CLOSED','SHUTDOWN') NOT NULL COMMENT '状态',
+  `province` varchar(50) DEFAULT NULL,
+  `city` varchar(50) DEFAULT NULL,
+  `district` varchar(50) DEFAULT NULL,
+  `address` varchar(200) DEFAULT NULL,
+  `latitude` decimal(10,8) DEFAULT NULL,
+  `longitude` decimal(11,8) DEFAULT NULL,
+  `principal_user_id` bigint DEFAULT NULL COMMENT '负责人用户ID',
+  `phone` varchar(20) DEFAULT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  `biz_hours` json DEFAULT NULL,
+  `open_date` date DEFAULT NULL,
+  `close_date` date DEFAULT NULL,
+  `area` decimal(10,2) DEFAULT NULL,
+  `capacity` int DEFAULT NULL,
+  `trade_area_tags` json DEFAULT NULL,
+  `remark` text DEFAULT NULL,
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`campus_id`)
+);
+```
+
+#### 4. 教室表 (`classroom`)
+
+```sql
+CREATE TABLE `classroom` (
+  `classroom_id` bigint NOT NULL AUTO_INCREMENT COMMENT '教室ID',
+  `campus_id` bigint NOT NULL COMMENT '所属校区ID',
+  `name` varchar(100) NOT NULL COMMENT '教室名称',
+  `code` varchar(50) NOT NULL UNIQUE COMMENT '教室编码',
+  `capacity` int DEFAULT NULL COMMENT '容量',
+  `course_type_tags` json DEFAULT NULL COMMENT '课程类型标签',
+  `status` enum('AVAILABLE','MAINTENANCE','DISABLED') NOT NULL COMMENT '状态',
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`classroom_id`)
+);
+```
+
+#### 5. 校区计费配置表 (`campus_billing_profile`)
+
+```sql
+CREATE TABLE `campus_billing_profile` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '记录ID',
+  `campus_id` bigint NOT NULL COMMENT '校区ID',
+  `invoice_title` varchar(200) NOT NULL COMMENT '发票抬头',
+  `tax_no` varchar(50) NOT NULL COMMENT '税号',
+  `bank_name` varchar(100) DEFAULT NULL COMMENT '开户行',
+  `bank_account` varchar(50) DEFAULT NULL COMMENT '银行账号',
+  `invoice_address` varchar(200) DEFAULT NULL COMMENT '发票地址',
+  `phone` varchar(20) DEFAULT NULL COMMENT '联系电话',
+  `tax_profile_id` bigint NOT NULL COMMENT '税务配置ID',
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`)
+);
+```
+
+#### 6. 审计日志表 (`audit_log`)
+
+```sql
+CREATE TABLE `audit_log` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '日志ID',
+  `org_id` bigint NOT NULL COMMENT '机构ID',
+  `actor_user_id` bigint NOT NULL COMMENT '操作者ID',
+  `entity_type` varchar(50) NOT NULL COMMENT '实体类型',
+  `entity_id` bigint NOT NULL COMMENT '实体ID',
+  `action` varchar(20) NOT NULL COMMENT '操作类型',
+  `diff_json` json DEFAULT NULL COMMENT '变更内容',
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `request_id` varchar(100) DEFAULT NULL COMMENT '请求ID',
+  PRIMARY KEY (`id`)
+);
+```
 
 ## 薪资服务 (Payroll Service)
 
 ### 数据库：`payroll_service`
 
-> **注意**: 薪资服务的具体表结构需要根据实际entity文件补充完善。
+薪资服务用于维护薪资区间和发薪记录。
 
-主要表结构：
-- `payroll_run`: 薪资发放记录表
-- `user_compensation`: 用户薪资设置表
+#### 1. 薪资设置表 (`user_compensation`)
+
+```sql
+CREATE TABLE `user_compensation` (
+  `comp_id` bigint NOT NULL AUTO_INCREMENT COMMENT '薪资记录ID',
+  `org_id` bigint NOT NULL COMMENT '机构ID',
+  `user_id` bigint NOT NULL COMMENT '用户ID',
+  `base_salary` decimal(12,2) NOT NULL COMMENT '基础工资',
+  `perf_salary` decimal(12,2) NOT NULL COMMENT '绩效工资',
+  `valid_from` date NOT NULL COMMENT '生效开始',
+  `valid_to` date DEFAULT NULL COMMENT '生效结束(不含)',
+  `reason` varchar(200) DEFAULT NULL COMMENT '调整原因',
+  `created_by` bigint NOT NULL COMMENT '创建人',
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`comp_id`)
+);
+```
+
+#### 2. 薪资发放表 (`payroll_run`)
+
+```sql
+CREATE TABLE `payroll_run` (
+  `run_id` bigint NOT NULL AUTO_INCREMENT COMMENT '发薪ID',
+  `org_id` bigint NOT NULL COMMENT '机构ID',
+  `user_id` bigint NOT NULL COMMENT '用户ID',
+  `payroll_month` date NOT NULL COMMENT '薪资月份',
+  `period_start` date NOT NULL COMMENT '开始日期',
+  `period_end` date NOT NULL COMMENT '结束日期',
+  `days_in_month` int NOT NULL COMMENT '月天数',
+  `days_covered` int NOT NULL COMMENT '覆盖天数',
+  `base_amount` decimal(12,2) NOT NULL COMMENT '基础金额',
+  `perf_amount` decimal(12,2) NOT NULL COMMENT '绩效金额',
+  `allowances` decimal(12,2) DEFAULT 0 COMMENT '津贴',
+  `deductions` decimal(12,2) DEFAULT 0 COMMENT '扣款',
+  `gross_amount` decimal(12,2) NOT NULL COMMENT '应发',
+  `tax_amount` decimal(12,2) DEFAULT 0 COMMENT '税额',
+  `net_amount` decimal(12,2) NOT NULL COMMENT '实发',
+  `status` enum('DRAFT','CONFIRMED','PAID') NOT NULL DEFAULT 'DRAFT' COMMENT '状态',
+  `snapshot_json` json DEFAULT NULL COMMENT '快照',
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`run_id`)
+);
+```
+
+#### 3. 审计日志表 (`audit_log`)
+
+```sql
+CREATE TABLE `audit_log` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '日志ID',
+  `org_id` bigint NOT NULL COMMENT '机构ID',
+  `actor_user_id` bigint NOT NULL COMMENT '操作者ID',
+  `entity_type` varchar(50) NOT NULL COMMENT '实体类型',
+  `entity_id` bigint NOT NULL COMMENT '实体ID',
+  `action` varchar(20) NOT NULL COMMENT '操作类型',
+  `diff_json` json DEFAULT NULL COMMENT '变更内容',
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `request_id` varchar(100) DEFAULT NULL COMMENT '请求ID',
+  PRIMARY KEY (`id`)
+);
+```
 
 ## 数据库初始化
 
@@ -297,4 +527,4 @@ KEY `IDX_ledger_audit_createdAt` (`createdAt`)
 
 ---
 
-*最后更新时间: 2025-08-21*
+*最后更新时间: 2025-08-28*
