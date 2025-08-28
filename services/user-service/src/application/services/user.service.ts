@@ -214,7 +214,14 @@ export class UserService {
     });
   }
 
-  async getChangeHistory(userId: number, orgId: number, from?: string, to?: string): Promise<AuditLog[]> {
+  async getChangeHistory(
+    userId: number,
+    orgId: number,
+    from?: string,
+    to?: string,
+    page_size = 20,
+    cursor?: string
+  ): Promise<PaginationResponse<AuditLog>> {
     const queryBuilder = this.auditLogRepository.createQueryBuilder('audit')
       .where('audit.entity_type = :entityType', { entityType: EntityType.USER })
       .andWhere('audit.entity_id = :entityId', { entityId: userId })
@@ -228,9 +235,37 @@ export class UserService {
       queryBuilder.andWhere('audit.created_at <= :to', { to: new Date(to) });
     }
 
-    return await queryBuilder
-      .orderBy('audit.created_at', 'DESC')
-      .getMany();
+    if (cursor) {
+      try {
+        const decoded = Buffer.from(cursor, 'base64').toString();
+        const parsed = JSON.parse(decoded);
+        queryBuilder.andWhere('audit.id > :cursorId', { cursorId: parsed.id });
+      } catch (error) {
+        throw new BadRequestException('Invalid cursor');
+      }
+    }
+
+    const total = await queryBuilder.getCount();
+
+    queryBuilder.orderBy('audit.id', 'ASC').limit(page_size + 1);
+
+    const logs = await queryBuilder.getMany();
+    const hasNext = logs.length > page_size;
+    if (hasNext) {
+      logs.pop();
+    }
+
+    let nextCursor: string | undefined;
+    if (hasNext && logs.length > 0) {
+      const last = logs[logs.length - 1];
+      nextCursor = Buffer.from(JSON.stringify({ id: last.id })).toString('base64');
+    }
+
+    return {
+      items: logs,
+      next_cursor: nextCursor,
+      total
+    };
   }
 
   private async createAuditLog(auditData: Partial<AuditLog>): Promise<AuditLog> {

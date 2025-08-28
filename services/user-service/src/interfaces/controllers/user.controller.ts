@@ -385,8 +385,10 @@ export class UserController {
   @ApiParam({ name: 'id', type: 'number', description: 'User ID', example: 123 })
   @ApiQuery({ name: 'from', required: false, type: 'string', description: 'Start date (ISO 8601)', example: '2024-01-01' })
   @ApiQuery({ name: 'to', required: false, type: 'string', description: 'End date (ISO 8601)', example: '2024-01-31' })
-  @ApiResponse({ 
-    status: HttpStatus.OK, 
+  @ApiQuery({ name: 'page_size', required: false, type: 'number', description: 'Items per page (max 100)', example: 20 })
+  @ApiQuery({ name: 'cursor', required: false, type: 'string', description: 'Cursor for pagination', example: 'eyBpZDogMSB9' })
+  @ApiResponse({
+    status: HttpStatus.OK,
     description: 'Change history retrieved successfully',
     schema: {
       type: 'object',
@@ -404,9 +406,9 @@ export class UserController {
                   changed_at: { type: 'string', format: 'date-time', example: '2024-01-01T12:00:00.000Z' },
                   changed_by: { type: 'number', example: 1 },
                   action: { type: 'string', example: 'UPDATE' },
-                  diff: { 
-                    type: 'object', 
-                    example: { 
+                  diff: {
+                    type: 'object',
+                    example: {
                       email: { old: 'old@example.com', new: 'new@example.com' },
                       role: { old: 'Teacher', new: 'Senior Teacher' }
                     }
@@ -414,7 +416,9 @@ export class UserController {
                   request_id: { type: 'string', example: 'req-123' }
                 }
               }
-            }
+            },
+            next_cursor: { type: 'string', nullable: true, example: 'eyBpZDogMSB9' },
+            total: { type: 'number', example: 42 }
           }
         }
       }
@@ -425,21 +429,25 @@ export class UserController {
     @Param('id', ParseIntPipe) userId: number,
     @Headers('X-Org-Id') orgId: string,
     @Query('from') from?: string,
-    @Query('to') to?: string
+    @Query('to') to?: string,
+    @Query('page_size', ParseIntPipe) pageSize: number = 20,
+    @Query('cursor') cursor?: string
   ): Promise<ApiResponseType<any>> {
     if (!orgId) {
       orgId = '1'; // Default org_id for testing
     }
-    const changes = await this.userService.getChangeHistory(userId, parseInt(orgId), from, to);
+    const result = await this.userService.getChangeHistory(userId, parseInt(orgId), from, to, pageSize, cursor);
 
     return ResponseHelper.found({
-      items: changes.map(change => ({
+      items: result.items.map(change => ({
         changed_at: change.created_at,
         changed_by: change.actor_user_id,
         action: change.action,
         diff: change.diff_json,
         request_id: change.request_id
-      }))
+      })),
+      next_cursor: result.next_cursor,
+      total: result.total
     }, '变更历史获取成功');
   }
 }

@@ -10,14 +10,16 @@ import {
   HttpStatus,
   ParseIntPipe,
   ValidationPipe,
-  UseGuards
+  UseGuards,
+  Query
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiHeader, ApiParam, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiHeader, ApiParam, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { CampusService } from '../../application/services/campus.service';
 import { CreateCampusDto } from '../dto/create-campus.dto';
 import { CreateClassroomDto } from '../dto/create-classroom.dto';
 import { CreateBillingProfileDto } from '../dto/create-billing-profile.dto';
-import { ApiResponse as ApiResponseType, JwtAuthGuard, ResponseHelper } from '@eduhub/shared';
+import { QueryCampusDto } from '../dto/query-campus.dto';
+import { ApiResponse as ApiResponseType, JwtAuthGuard, ResponseHelper, CampusStatus } from '@eduhub/shared';
 
 @ApiTags('Campuses')
 @Controller('campuses')
@@ -152,12 +154,16 @@ export class CampusController {
   }
 
   @Get()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get all campuses for organization',
     description: 'Retrieves all campuses belonging to the organization.'
   })
-  @ApiResponse({ 
-    status: HttpStatus.OK, 
+  @ApiQuery({ name: 'q', required: false, type: 'string', description: 'Search by name or code', example: 'Beijing' })
+  @ApiQuery({ name: 'status', required: false, enum: CampusStatus, description: 'Filter by campus status' })
+  @ApiQuery({ name: 'page_size', required: false, type: 'number', description: 'Items per page (max 100)', example: 20 })
+  @ApiQuery({ name: 'cursor', required: false, type: 'string', description: 'Cursor for pagination', example: 'eyBjYW1wdXNfaWQ6IDEwIH0=' })
+  @ApiResponse({
+    status: HttpStatus.OK,
     description: 'Campuses retrieved successfully',
     schema: {
       type: 'object',
@@ -176,13 +182,15 @@ export class CampusController {
                   name: { type: 'string', example: 'Beijing Main Campus' },
                   code: { type: 'string', example: 'BJ001' },
                   type: { type: 'string', example: 'DIRECT' },
-                  status: { type: 'string', example: 'ACTIVE' },
+                  status: { type: 'string', example: 'OPERATING' },
                   city: { type: 'string', example: 'Beijing' },
                   address: { type: 'string', example: '123 Education Street' },
                   capacity: { type: 'number', example: 500 }
                 }
               }
-            }
+            },
+            next_cursor: { type: 'string', nullable: true, example: 'eyBjYW1wdXNfaWQ6IDEwIH0=' },
+            total: { type: 'number', example: 100 }
           }
         }
       }
@@ -190,14 +198,15 @@ export class CampusController {
   })
   @ApiHeader({ name: 'X-Org-Id', description: 'Organization ID (required)', required: true, schema: { type: 'string', example: '1' } })
   async findAll(
+    @Query(ValidationPipe) queryDto: QueryCampusDto,
     @Headers('X-Org-Id') orgId: string
   ): Promise<ApiResponseType<any>> {
     if (!orgId) {
       orgId = '1'; // Default org_id for testing
     }
-    const campuses = await this.campusService.findAllCampuses(parseInt(orgId));
-    
-    return ResponseHelper.found({ items: campuses }, '校园列表获取成功');
+    const campuses = await this.campusService.findAllCampuses(parseInt(orgId), queryDto);
+
+    return ResponseHelper.found(campuses, '校园列表获取成功');
   }
 
   @Patch(':id')
