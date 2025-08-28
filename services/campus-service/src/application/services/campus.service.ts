@@ -7,7 +7,8 @@ import { CampusBillingProfile } from '../../domain/entities/campus-billing-profi
 import { CreateCampusDto } from '../../interfaces/dto/create-campus.dto';
 import { CreateClassroomDto } from '../../interfaces/dto/create-classroom.dto';
 import { CreateBillingProfileDto } from '../../interfaces/dto/create-billing-profile.dto';
-import { ServiceClient } from '@eduhub/shared';
+import { ServiceClient, PaginationResponse } from '@eduhub/shared';
+import { QueryCampusDto } from '../../interfaces/dto/query-campus.dto';
 
 @Injectable()
 export class CampusService {
@@ -56,12 +57,54 @@ export class CampusService {
     return campus;
   }
 
-  async findAllCampuses(orgId: number): Promise<Campus[]> {
-    return await this.campusRepository.find({
-      where: { org_id: orgId },
-      relations: ['classrooms'],
-      order: { created_at: 'DESC' }
-    });
+  async findAllCampuses(orgId: number, queryDto: QueryCampusDto): Promise<PaginationResponse<Campus>> {
+    const { q, status, page_size = 20, cursor } = queryDto;
+
+    const queryBuilder = this.campusRepository.createQueryBuilder('campus')
+      .where('campus.org_id = :orgId', { orgId });
+
+    if (q) {
+      queryBuilder.andWhere(
+        '(campus.name LIKE :search OR campus.code LIKE :search OR campus.city LIKE :search)',
+        { search: `%${q}%` }
+      );
+    }
+
+    if (status) {
+      queryBuilder.andWhere('campus.status = :status', { status });
+    }
+
+    if (cursor) {
+      try {
+        const decoded = Buffer.from(cursor, 'base64').toString();
+        const parsed = JSON.parse(decoded);
+        queryBuilder.andWhere('campus.campus_id > :cursorId', { cursorId: parsed.campus_id });
+      } catch (error) {
+        throw new BadRequestException('Invalid cursor');
+      }
+    }
+
+    const total = await queryBuilder.getCount();
+
+    queryBuilder.orderBy('campus.campus_id', 'ASC').limit(page_size + 1);
+
+    const campuses = await queryBuilder.getMany();
+    const hasNext = campuses.length > page_size;
+    if (hasNext) {
+      campuses.pop();
+    }
+
+    let nextCursor: string | undefined;
+    if (hasNext && campuses.length > 0) {
+      const last = campuses[campuses.length - 1];
+      nextCursor = Buffer.from(JSON.stringify({ campus_id: last.campus_id })).toString('base64');
+    }
+
+    return {
+      items: campuses,
+      next_cursor: nextCursor,
+      total
+    };
   }
 
   async createClassroom(campusId: number, orgId: number, createClassroomDto: CreateClassroomDto): Promise<Classroom> {
