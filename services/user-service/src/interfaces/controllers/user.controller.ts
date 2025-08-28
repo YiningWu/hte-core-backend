@@ -11,7 +11,6 @@ import {
   HttpStatus,
   ParseIntPipe,
   ValidationPipe,
-  UseGuards,
   UseInterceptors
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiHeader, ApiParam, ApiQuery, ApiBody } from '@nestjs/swagger';
@@ -19,7 +18,7 @@ import { UserService } from '../../application/services/user.service';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { QueryUserDto } from '../dto/query-user.dto';
-import { ApiResponse as ApiResponseType, PaginationResponse, JwtAuthGuard, ResponseHelper, Idempotent, IdempotentInterceptor } from '@eduhub/shared';
+import { ApiResponse as ApiResponseType, PaginationResponse, ResponseHelper, Idempotent, IdempotentInterceptor } from '@eduhub/shared';
 import { User } from '../../domain/entities/user.entity';
 
 @ApiTags('Users')

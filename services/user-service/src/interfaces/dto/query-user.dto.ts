@@ -1,5 +1,5 @@
 import { IsOptional, IsString, IsEnum, IsNumber, Min, Max } from 'class-validator';
-import { Transform, Type } from 'class-transformer';
+import { Type } from 'class-transformer';
 import { EmploymentStatus } from '@eduhub/shared';
 
 export class QueryUserDto {

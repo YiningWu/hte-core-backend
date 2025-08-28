@@ -3,9 +3,10 @@
   "compilerOptions": {
     "declaration": true,
     "outDir": "./dist",
-    "baseUrl": "./src",
+    "baseUrl": ".",
     "paths": {
-      "@eduhub/shared": ["../../libs/shared/src"]
+      "@eduhub/shared": ["../../libs/shared/src"],
+      "*": ["src/*"]
     }
   },
   "include": ["src/**/*"],
