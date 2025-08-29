@@ -9,5 +9,5 @@
       "@eduhub/shared/*": ["libs/shared/src/*"]
     }
   },
-  "include": ["api-tests/jest/**/*.ts"]
+ "include": ["api-tests/jest/**/*.ts", "services/**/*.ts", "libs/**/*.ts"]
 }
