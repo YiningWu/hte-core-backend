@@ -4,10 +4,11 @@ import { Repository } from 'typeorm';
 import { Campus } from '../../domain/entities/campus.entity';
 import { Classroom } from '../../domain/entities/classroom.entity';
 import { CampusBillingProfile } from '../../domain/entities/campus-billing-profile.entity';
+import { AuditLog } from '../../domain/entities/audit-log.entity';
 import { CreateCampusDto } from '../../interfaces/dto/create-campus.dto';
 import { CreateClassroomDto } from '../../interfaces/dto/create-classroom.dto';
 import { CreateBillingProfileDto } from '../../interfaces/dto/create-billing-profile.dto';
-import { ServiceClient, PaginationResponse } from '@eduhub/shared';
+import { ServiceClient, PaginationResponse, EntityType, ChangeAction } from '@eduhub/shared';
 import { QueryCampusDto } from '../../interfaces/dto/query-campus.dto';
 
 @Injectable()
@@ -19,10 +20,17 @@ export class CampusService {
     private readonly classroomRepository: Repository<Classroom>,
     @InjectRepository(CampusBillingProfile)
     private readonly billingProfileRepository: Repository<CampusBillingProfile>,
+    @InjectRepository(AuditLog)
+    private readonly auditLogRepository: Repository<AuditLog>,
     private readonly serviceClient: ServiceClient
   ) {}
 
-  async createCampus(createCampusDto: CreateCampusDto): Promise<Campus> {
+  private async createAuditLog(data: Partial<AuditLog>): Promise<AuditLog> {
+    const log = this.auditLogRepository.create(data);
+    return this.auditLogRepository.save(log);
+  }
+
+  async createCampus(createCampusDto: CreateCampusDto, actorUserId: number): Promise<Campus> {
     const existingCampus = await this.campusRepository.findOne({
       where: { code: createCampusDto.code }
     });
@@ -41,7 +49,18 @@ export class CampusService {
       open_date: createCampusDto.open_date ? new Date(createCampusDto.open_date) : null
     });
 
-    return await this.campusRepository.save(campus);
+    const savedCampus = await this.campusRepository.save(campus);
+
+    await this.createAuditLog({
+      org_id: savedCampus.org_id,
+      actor_user_id: actorUserId,
+      entity_type: EntityType.CAMPUS,
+      entity_id: savedCampus.campus_id,
+      action: ChangeAction.CREATE,
+      diff_json: { created: createCampusDto }
+    });
+
+    return savedCampus;
   }
 
   async findCampusById(campusId: number, orgId: number): Promise<Campus> {
@@ -107,8 +126,13 @@ export class CampusService {
     };
   }
 
-  async createClassroom(campusId: number, orgId: number, createClassroomDto: CreateClassroomDto): Promise<Classroom> {
-    const campus = await this.findCampusById(campusId, orgId);
+  async createClassroom(
+    campusId: number,
+    orgId: number,
+    createClassroomDto: CreateClassroomDto,
+    actorUserId: number
+  ): Promise<Classroom> {
+    await this.findCampusById(campusId, orgId);
 
     const existingClassroom = await this.classroomRepository.findOne({
       where: { code: createClassroomDto.code }
@@ -123,21 +147,53 @@ export class CampusService {
       campus_id: campusId
     });
 
-    return await this.classroomRepository.save(classroom);
+    const savedClassroom = await this.classroomRepository.save(classroom);
+
+    await this.createAuditLog({
+      org_id: orgId,
+      actor_user_id: actorUserId,
+      entity_type: EntityType.CLASSROOM,
+      entity_id: savedClassroom.classroom_id,
+      action: ChangeAction.CREATE,
+      diff_json: { created: createClassroomDto, campus_id: campusId }
+    });
+
+    return savedClassroom;
   }
 
-  async createBillingProfile(campusId: number, orgId: number, createBillingProfileDto: CreateBillingProfileDto): Promise<CampusBillingProfile> {
-    const campus = await this.findCampusById(campusId, orgId);
+  async createBillingProfile(
+    campusId: number,
+    orgId: number,
+    createBillingProfileDto: CreateBillingProfileDto,
+    actorUserId: number
+  ): Promise<CampusBillingProfile> {
+    await this.findCampusById(campusId, orgId);
 
     const billingProfile = this.billingProfileRepository.create({
       ...createBillingProfileDto,
       campus_id: campusId
     });
 
-    return await this.billingProfileRepository.save(billingProfile);
+    const savedProfile = await this.billingProfileRepository.save(billingProfile);
+
+    await this.createAuditLog({
+      org_id: orgId,
+      actor_user_id: actorUserId,
+      entity_type: EntityType.CAMPUS,
+      entity_id: campusId,
+      action: ChangeAction.CREATE,
+      diff_json: { created: createBillingProfileDto, billing_profile_id: savedProfile.id }
+    });
+
+    return savedProfile;
   }
 
-  async updateCampus(campusId: number, orgId: number, updateData: Partial<CreateCampusDto>): Promise<Campus> {
+  async updateCampus(
+    campusId: number,
+    orgId: number,
+    updateData: Partial<CreateCampusDto>,
+    actorUserId: number
+  ): Promise<Campus> {
     const campus = await this.findCampusById(campusId, orgId);
 
     if (updateData.code && updateData.code !== campus.code) {
@@ -148,6 +204,8 @@ export class CampusService {
         throw new ConflictException('Campus code already exists');
       }
     }
+
+    const previousData = { ...campus };
 
     // Validate principal user if being updated
     if (updateData.principal_user_id && updateData.principal_user_id !== campus.principal_user_id) {
@@ -160,12 +218,32 @@ export class CampusService {
       campus.open_date = new Date(updateData.open_date);
     }
 
-    return await this.campusRepository.save(campus);
+    const updatedCampus = await this.campusRepository.save(campus);
+
+    await this.createAuditLog({
+      org_id: orgId,
+      actor_user_id: actorUserId,
+      entity_type: EntityType.CAMPUS,
+      entity_id: updatedCampus.campus_id,
+      action: ChangeAction.UPDATE,
+      diff_json: { previous: previousData, updated: updateData }
+    });
+
+    return updatedCampus;
   }
 
-  async deleteCampus(campusId: number, orgId: number): Promise<void> {
+  async deleteCampus(campusId: number, orgId: number, actorUserId: number): Promise<void> {
     const campus = await this.findCampusById(campusId, orgId);
     await this.campusRepository.remove(campus);
+
+    await this.createAuditLog({
+      org_id: orgId,
+      actor_user_id: actorUserId,
+      entity_type: EntityType.CAMPUS,
+      entity_id: campusId,
+      action: ChangeAction.DELETE,
+      diff_json: { deleted: campus }
+    });
   }
 
   private async validateUser(userId: number, orgId: number): Promise<void> {
