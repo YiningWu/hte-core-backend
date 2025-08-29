@@ -88,7 +88,7 @@ export class User {
       try {
         const parts = this.id_card_no_encrypted.split(':');
         if (parts.length === 2) {
-          const decipher = crypto.createDecipher('aes-256-cbc', process.env.ENCRYPTION_KEY);
+          const decipher = crypto.createDecipher('aes-256-cbc', process.env.ENCRYPTION_KEY as string);
           let decrypted = decipher.update(parts[1], 'hex', 'utf8');
           decrypted += decipher.final('utf8');
           return decrypted;
@@ -107,7 +107,7 @@ export class User {
       
       // Encrypt for storage
       const iv = crypto.randomBytes(16);
-      const cipher = crypto.createCipher('aes-256-cbc', process.env.ENCRYPTION_KEY);
+      const cipher = crypto.createCipher('aes-256-cbc', process.env.ENCRYPTION_KEY as string);
       let encrypted = cipher.update(value, 'utf8', 'hex');
       encrypted += cipher.final('hex');
       this.id_card_no_encrypted = iv.toString('hex') + ':' + encrypted;

@@ -2,13 +2,14 @@
 
 ## 概述
 
-EduHub 是一个基于微服务架构的教育管理系统，包含用户服务、校园服务和薪资服务三个核心微服务。
+EduHub 是一个基于微服务架构的教育管理系统，包含用户服务、校园服务、薪资服务和账单服务四个核心微服务。
 
 ## 服务端口
 
 - **用户服务** (User Service): http://localhost:3001
-- **校园服务** (Campus Service): http://localhost:3002  
+- **校园服务** (Campus Service): http://localhost:3002
 - **薪资服务** (Payroll Service): http://localhost:3003
+- **账单服务** (Billing Service): http://localhost:3004
 
 注：**存储服务** (Storage Service) 集成在共享库中，通过各个微服务的 `/core/storage` 路径提供服务。
 
@@ -17,6 +18,7 @@ EduHub 是一个基于微服务架构的教育管理系统，包含用户服务�
 - 用户服务: http://localhost:3001/api/docs
 - 校园服务: http://localhost:3002/api/docs
 - 薪资服务: http://localhost:3003/api/docs
+- 账单服务: http://localhost:3004/api/docs
 
 注：存储服务API文档可在任一服务的Swagger文档中查看 `/core/storage` 路径下的接口。
 
@@ -1113,6 +1115,7 @@ npm run dev
 - 薪资服务: http://localhost:3003/api/docs
 
 3. 健康检查:
-- http://localhost:3001/healthz
-- http://localhost:3002/healthz
-- http://localhost:3003/healthz
+- http://localhost:3001/core/health
+- http://localhost:3002/core/health
+- http://localhost:3003/core/health
+- http://localhost:3004/core/health
