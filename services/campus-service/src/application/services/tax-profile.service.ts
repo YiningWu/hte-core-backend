@@ -15,7 +15,7 @@ export class TaxProfileService {
     private readonly auditLogRepository: Repository<AuditLog>
   ) {}
 
-  async createTaxProfile(createTaxProfileDto: CreateTaxProfileDto, actorUserId: number): Promise<TaxProfile> {
+  async createTaxProfile(orgId: number, createTaxProfileDto: CreateTaxProfileDto, actorUserId: number): Promise<TaxProfile> {
     // Check for duplicate name
     const existingTaxProfile = await this.taxProfileRepository.findOne({
       where: { name: createTaxProfileDto.name }
@@ -29,7 +29,7 @@ export class TaxProfileService {
     const savedTaxProfile = await this.taxProfileRepository.save(taxProfile);
 
     await this.createAuditLog({
-      org_id: 1, // TODO: Get from context or parameter
+      org_id: orgId,
       actor_user_id: actorUserId,
       entity_type: EntityType.CAMPUS,
       entity_id: savedTaxProfile.tax_profile_id,
@@ -60,7 +60,7 @@ export class TaxProfileService {
     });
   }
 
-  async updateTaxProfile(taxProfileId: number, updateTaxProfileDto: UpdateTaxProfileDto, actorUserId: number): Promise<TaxProfile> {
+  async updateTaxProfile(orgId: number, taxProfileId: number, updateTaxProfileDto: UpdateTaxProfileDto, actorUserId: number): Promise<TaxProfile> {
     const existingTaxProfile = await this.findTaxProfileById(taxProfileId);
 
     // Check for duplicate name (excluding current tax profile)
@@ -80,7 +80,7 @@ export class TaxProfileService {
     const updatedTaxProfile = await this.taxProfileRepository.save(existingTaxProfile);
 
     await this.createAuditLog({
-      org_id: 1, // TODO: Get from context or parameter
+      org_id: orgId,
       actor_user_id: actorUserId,
       entity_type: EntityType.CAMPUS,
       entity_id: updatedTaxProfile.tax_profile_id,
@@ -94,7 +94,7 @@ export class TaxProfileService {
     return updatedTaxProfile;
   }
 
-  async deleteTaxProfile(taxProfileId: number, actorUserId: number): Promise<void> {
+  async deleteTaxProfile(orgId: number, taxProfileId: number, actorUserId: number): Promise<void> {
     const taxProfile = await this.findTaxProfileById(taxProfileId);
 
     // Check if tax profile is being used by billing profiles
@@ -105,7 +105,7 @@ export class TaxProfileService {
     await this.taxProfileRepository.remove(taxProfile);
 
     await this.createAuditLog({
-      org_id: 1, // TODO: Get from context or parameter
+      org_id: orgId,
       actor_user_id: actorUserId,
       entity_type: EntityType.CAMPUS,
       entity_id: taxProfileId,

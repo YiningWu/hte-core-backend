@@ -194,15 +194,19 @@ export class PayrollController {
   @ApiResponse({ status: HttpStatus.CREATED, description: 'Payroll run generated' })
   async generatePayroll(
     @Body(ValidationPipe) generatePayrollDto: GeneratePayrollDto,
-    @Headers('X-Org-Id') orgId: string
+    @Headers('X-Org-Id') orgId: string,
+    @Headers('X-User-Id') userId: string
   ): Promise<ApiResponseType<{ run_id: number; status: string }>> {
     if (!orgId) {
       orgId = '1'; // Default org_id for testing
     }
+    if (!userId) {
+      userId = '1';
+    }
     const payrollRun = await this.payrollService.generatePayrollRun({
       ...generatePayrollDto,
       org_id: parseInt(orgId)
-    });
+    }, parseInt(userId));
 
     return ResponseHelper.created({
       run_id: payrollRun.run_id,
@@ -233,9 +237,13 @@ export class PayrollController {
   @ApiResponse({ status: HttpStatus.OK, description: 'Payroll run status updated' })
   async updatePayrollStatus(
     @Param('id', ParseIntPipe) runId: number,
-    @Body() body: { action: 'confirm' | 'pay' }
+    @Body() body: { action: 'confirm' | 'pay' },
+    @Headers('X-User-Id') userId: string
   ): Promise<ApiResponseType<{ run_id: number; status: string }>> {
-    const payrollRun = await this.payrollService.updatePayrollRunStatus(runId, body.action);
+    if (!userId) {
+      userId = '1';
+    }
+    const payrollRun = await this.payrollService.updatePayrollRunStatus(runId, body.action, parseInt(userId));
 
     return ResponseHelper.updated({
       run_id: payrollRun.run_id,

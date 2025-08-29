@@ -88,15 +88,19 @@ export class CampusController {
   @ApiHeader({ name: 'X-Org-Id', description: 'Organization ID (required)', required: true, schema: { type: 'string', example: '1' } })
   async create(
     @Body(ValidationPipe) createCampusDto: CreateCampusDto,
-    @Headers('X-Org-Id') orgId: string
+    @Headers('X-Org-Id') orgId: string,
+    @Headers('X-User-Id') userId: string
   ): Promise<ApiResponseType<{ campus_id: number; created_at: Date }>> {
     if (!orgId) {
       orgId = '1'; // Default org_id for testing
     }
+    if (!userId) {
+      userId = '1';
+    }
     const campus = await this.campusService.createCampus({
       ...createCampusDto,
       org_id: parseInt(orgId)
-    });
+    }, parseInt(userId));
 
     return ResponseHelper.created({
       campus_id: campus.campus_id,
@@ -232,9 +236,13 @@ export class CampusController {
   async update(
     @Param('id', ParseIntPipe) campusId: number,
     @Body(ValidationPipe) updateData: Partial<CreateCampusDto>,
-    @Headers('X-Org-Id') orgId: string
+    @Headers('X-Org-Id') orgId: string,
+    @Headers('X-User-Id') userId: string
   ): Promise<ApiResponseType<{ updated: boolean; updated_at: Date }>> {
-    const campus = await this.campusService.updateCampus(campusId, parseInt(orgId), updateData);
+    if (!userId) {
+      userId = '1';
+    }
+    const campus = await this.campusService.updateCampus(campusId, parseInt(orgId), updateData, parseInt(userId));
 
     return ResponseHelper.updated({
       updated: true,
@@ -263,9 +271,13 @@ export class CampusController {
   })
   async delete(
     @Param('id', ParseIntPipe) campusId: number,
-    @Headers('X-Org-Id') orgId: string
+    @Headers('X-Org-Id') orgId: string,
+    @Headers('X-User-Id') userId: string
   ): Promise<ApiResponseType<{ deleted: boolean }>> {
-    await this.campusService.deleteCampus(campusId, parseInt(orgId));
+    if (!userId) {
+      userId = '1';
+    }
+    await this.campusService.deleteCampus(campusId, parseInt(orgId), parseInt(userId));
 
     return ResponseHelper.deleted('校园删除成功');
   }
@@ -292,9 +304,13 @@ export class CampusController {
   async createClassroom(
     @Param('id', ParseIntPipe) campusId: number,
     @Body(ValidationPipe) createClassroomDto: CreateClassroomDto,
-    @Headers('X-Org-Id') orgId: string
+    @Headers('X-Org-Id') orgId: string,
+    @Headers('X-User-Id') userId: string
   ): Promise<ApiResponseType<{ classroom_id: number }>> {
-    const classroom = await this.campusService.createClassroom(campusId, parseInt(orgId), createClassroomDto);
+    if (!userId) {
+      userId = '1';
+    }
+    const classroom = await this.campusService.createClassroom(campusId, parseInt(orgId), createClassroomDto, parseInt(userId));
 
     return ResponseHelper.created({ classroom_id: classroom.classroom_id }, '教室创建成功');
   }
@@ -322,9 +338,13 @@ export class CampusController {
   async createBillingProfile(
     @Param('id', ParseIntPipe) campusId: number,
     @Body(ValidationPipe) createBillingProfileDto: CreateBillingProfileDto,
-    @Headers('X-Org-Id') orgId: string
+    @Headers('X-Org-Id') orgId: string,
+    @Headers('X-User-Id') userId: string
   ): Promise<ApiResponseType<{ id: number; created_at: Date }>> {
-    const profile = await this.campusService.createBillingProfile(campusId, parseInt(orgId), createBillingProfileDto);
+    if (!userId) {
+      userId = '1';
+    }
+    const profile = await this.campusService.createBillingProfile(campusId, parseInt(orgId), createBillingProfileDto, parseInt(userId));
 
     return ResponseHelper.created({
       id: profile.id,

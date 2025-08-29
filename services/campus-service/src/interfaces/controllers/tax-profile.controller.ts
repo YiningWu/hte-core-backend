@@ -49,7 +49,7 @@ export class TaxProfileController {
     @Body(ValidationPipe) createTaxProfileDto: CreateTaxProfileDto,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<ApiResponseType<{ tax_profile_id: number; created_at: Date }>> {
-    const taxProfile = await this.taxProfileService.createTaxProfile(createTaxProfileDto, user.user_id);
+    const taxProfile = await this.taxProfileService.createTaxProfile(user.org_id, createTaxProfileDto, user.user_id);
 
     return ResponseHelper.created({
       tax_profile_id: taxProfile.tax_profile_id,
@@ -156,7 +156,7 @@ export class TaxProfileController {
     @Body(ValidationPipe) updateTaxProfileDto: UpdateTaxProfileDto,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<ApiResponseType<{ updated: boolean; updated_at: Date }>> {
-    const taxProfile = await this.taxProfileService.updateTaxProfile(taxProfileId, updateTaxProfileDto, user.user_id);
+    const taxProfile = await this.taxProfileService.updateTaxProfile(user.org_id, taxProfileId, updateTaxProfileDto, user.user_id);
 
     return ResponseHelper.updated({
       updated: true,
@@ -188,7 +188,7 @@ export class TaxProfileController {
     @Param('id', ParseIntPipe) taxProfileId: number,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<ApiResponseType<{ deleted: boolean }>> {
-    await this.taxProfileService.deleteTaxProfile(taxProfileId, user.user_id);
+    await this.taxProfileService.deleteTaxProfile(user.org_id, taxProfileId, user.user_id);
 
     return ResponseHelper.deleted('税务配置删除成功');
   }

@@ -3,9 +3,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, Between, LessThanOrEqual, MoreThanOrEqual, IsNull, Or } from 'typeorm';
 import { UserCompensation } from '../../domain/entities/user-compensation.entity';
 import { PayrollRun } from '../../domain/entities/payroll-run.entity';
+import { AuditLog } from '../../domain/entities/audit-log.entity';
 import { CreateCompensationDto } from '../../interfaces/dto/create-compensation.dto';
 import { GeneratePayrollDto, GenerateBatchPayrollDto } from '../../interfaces/dto/generate-payroll.dto';
-import { PayrollStatus, DistributedLockService } from '@eduhub/shared';
+import { PayrollStatus, DistributedLockService, EntityType, ChangeAction } from '@eduhub/shared';
 import { startOfMonth, endOfMonth, getDaysInMonth, format } from 'date-fns';
 
 interface PayrollCalculationResult {
@@ -24,9 +25,16 @@ export class PayrollService {
     private readonly compensationRepository: Repository<UserCompensation>,
     @InjectRepository(PayrollRun)
     private readonly payrollRunRepository: Repository<PayrollRun>,
+    @InjectRepository(AuditLog)
+    private readonly auditLogRepository: Repository<AuditLog>,
     private readonly dataSource: DataSource,
     private readonly lockService: DistributedLockService
   ) {}
+
+  private async createAuditLog(data: Partial<AuditLog>): Promise<AuditLog> {
+    const log = this.auditLogRepository.create(data);
+    return this.auditLogRepository.save(log);
+  }
 
   async createCompensation(createCompensationDto: CreateCompensationDto): Promise<UserCompensation> {
     const lockKey = this.lockService.getCompensationLockKey(createCompensationDto.user_id);
@@ -78,6 +86,15 @@ export class PayrollService {
       });
 
       const savedCompensation = await queryRunner.manager.save(UserCompensation, newCompensation);
+
+      await this.createAuditLog({
+        org_id: createCompensationDto.org_id,
+        actor_user_id: createCompensationDto.operator_id,
+        entity_type: EntityType.USER_COMPENSATION,
+        entity_id: savedCompensation.comp_id,
+        action: ChangeAction.CREATE,
+        diff_json: { created: createCompensationDto }
+      });
 
       await queryRunner.commitTransaction();
       return savedCompensation;
@@ -167,7 +184,7 @@ export class PayrollService {
     };
   }
 
-  async generatePayrollRun(generatePayrollDto: GeneratePayrollDto): Promise<PayrollRun> {
+  async generatePayrollRun(generatePayrollDto: GeneratePayrollDto, actorUserId: number): Promise<PayrollRun> {
     const { user_id, month, allowances = 0, deductions = 0, org_id } = generatePayrollDto;
     const monthDate = new Date(month);
 
@@ -209,7 +226,18 @@ export class PayrollService {
 
     payrollRun.updateAmounts();
 
-    return await this.payrollRunRepository.save(payrollRun);
+    const savedRun = await this.payrollRunRepository.save(payrollRun);
+
+    await this.createAuditLog({
+      org_id,
+      actor_user_id: actorUserId,
+      entity_type: EntityType.PAYROLL_RUN,
+      entity_id: savedRun.run_id,
+      action: ChangeAction.CREATE,
+      diff_json: { created: generatePayrollDto }
+    });
+
+    return savedRun;
   }
 
   async generateBatchPayrollRuns(generateBatchDto: GenerateBatchPayrollDto): Promise<{ batch_id: string; submitted: boolean; estimated: number }> {
@@ -241,7 +269,7 @@ export class PayrollService {
     return result;
   }
 
-  async updatePayrollRunStatus(runId: number, action: 'confirm' | 'pay'): Promise<PayrollRun> {
+  async updatePayrollRunStatus(runId: number, action: 'confirm' | 'pay', actorUserId: number): Promise<PayrollRun> {
     const payrollRun = await this.payrollRunRepository.findOne({
       where: { run_id: runId }
     });
@@ -249,6 +277,8 @@ export class PayrollService {
     if (!payrollRun) {
       throw new NotFoundException('Payroll run not found');
     }
+
+    const previousStatus = payrollRun.status;
 
     if (action === 'confirm' && payrollRun.status === PayrollStatus.DRAFT) {
       payrollRun.status = PayrollStatus.CONFIRMED;
@@ -258,7 +288,18 @@ export class PayrollService {
       throw new BadRequestException(`Invalid status transition: ${payrollRun.status} -> ${action}`);
     }
 
-    return await this.payrollRunRepository.save(payrollRun);
+    const savedRun = await this.payrollRunRepository.save(payrollRun);
+
+    await this.createAuditLog({
+      org_id: payrollRun.org_id,
+      actor_user_id: actorUserId,
+      entity_type: EntityType.PAYROLL_RUN,
+      entity_id: runId,
+      action: ChangeAction.UPDATE,
+      diff_json: { previous_status: previousStatus, updated_status: payrollRun.status }
+    });
+
+    return savedRun;
   }
 
   async getPayrollRuns(orgId: number, userId?: number, month?: string): Promise<PayrollRun[]> {
