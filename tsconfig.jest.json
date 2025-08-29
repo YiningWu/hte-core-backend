@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "isolatedModules": false,
+    "noEmit": true,
+    "paths": {
+      "@eduhub/shared": ["libs/shared/src"],
+      "@eduhub/shared/*": ["libs/shared/src/*"]
+    }
+  },
+  "include": ["api-tests/jest/**/*.ts", "services/**/*.ts", "libs/**/*.ts"]
+}
